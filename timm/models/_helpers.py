@@ -139,7 +139,9 @@ def resume_checkpoint(
             if log_info:
                 _logger.info("Loaded checkpoint '{}' (epoch {})".format(checkpoint_path, checkpoint['epoch']))
         else:
+            # TODO TO LoAD UNPURE MODE
             model.load_state_dict(checkpoint)
+            #model.load_state_dict(checkpoint,strict=False)
             if log_info:
                 _logger.info("Loaded checkpoint '{}'".format(checkpoint_path))
         return resume_epoch

@@ -79,6 +79,10 @@ parser.add_argument('-c', '--config', default='', type=str, metavar='FILE',
 
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
 
+#Mode parameter:
+parser.add_argument('--test', action='store_true', default=False,
+                   help='Test the trained model (without training)')
+
 # Dataset parameters
 group = parser.add_argument_group('Dataset parameters')
 # Keep this argument outside the dataset group because it is positional.
@@ -751,83 +755,91 @@ def main():
         _logger.info(
             f'Scheduled epochs: {num_epochs}. LR stepped per {"epoch" if lr_scheduler.t_in_epochs else "update"}.')
 
-    try:
-        for epoch in range(start_epoch, num_epochs):
-            if hasattr(dataset_train, 'set_epoch'):
-                dataset_train.set_epoch(epoch)
-            elif args.distributed and hasattr(loader_train.sampler, 'set_epoch'):
-                loader_train.sampler.set_epoch(epoch)
+    if args.test is False:
+        try:
+            for epoch in range(start_epoch, num_epochs):
+                if hasattr(dataset_train, 'set_epoch'):
+                    dataset_train.set_epoch(epoch)
+                elif args.distributed and hasattr(loader_train.sampler, 'set_epoch'):
+                    loader_train.sampler.set_epoch(epoch)
 
-            train_metrics = train_one_epoch(
-                epoch,
-                model,
-                loader_train,
-                optimizer,
-                train_loss_fn,
-                args,
-                lr_scheduler=lr_scheduler,
-                saver=saver,
-                output_dir=output_dir,
-                amp_autocast=amp_autocast,
-                loss_scaler=loss_scaler,
-                model_ema=model_ema,
-                mixup_fn=mixup_fn,
-            )
+                train_metrics = train_one_epoch(
+                    epoch,
+                    model,
+                    loader_train,
+                    optimizer,
+                    train_loss_fn,
+                    args,
+                    lr_scheduler=lr_scheduler,
+                    saver=saver,
+                    output_dir=output_dir,
+                    amp_autocast=amp_autocast,
+                    loss_scaler=loss_scaler,
+                    model_ema=model_ema,
+                    mixup_fn=mixup_fn,
+                )
 
-            if args.distributed and args.dist_bn in ('broadcast', 'reduce'):
-                if utils.is_primary(args):
-                    _logger.info("Distributing BatchNorm running means and vars")
-                utils.distribute_bn(model, args.world_size, args.dist_bn == 'reduce')
-
-            eval_metrics = validate(
-                model,
-                loader_eval,
-                validate_loss_fn,
-                args,
-                amp_autocast=amp_autocast,
-            )
-
-            if model_ema is not None and not args.model_ema_force_cpu:
                 if args.distributed and args.dist_bn in ('broadcast', 'reduce'):
-                    utils.distribute_bn(model_ema, args.world_size, args.dist_bn == 'reduce')
+                    if utils.is_primary(args):
+                        _logger.info("Distributing BatchNorm running means and vars")
+                    utils.distribute_bn(model, args.world_size, args.dist_bn == 'reduce')
 
-                ema_eval_metrics = validate(
-                    model_ema.module,
+                eval_metrics = validate(
+                    model,
                     loader_eval,
                     validate_loss_fn,
                     args,
                     amp_autocast=amp_autocast,
-                    log_suffix=' (EMA)',
-                )
-                eval_metrics = ema_eval_metrics
-
-            if output_dir is not None:
-                lrs = [param_group['lr'] for param_group in optimizer.param_groups]
-                utils.update_summary(
-                    epoch,
-                    train_metrics,
-                    eval_metrics,
-                    filename=os.path.join(output_dir, 'summary.csv'),
-                    lr=sum(lrs) / len(lrs),
-                    write_header=best_metric is None,
-                    log_wandb=args.log_wandb and has_wandb,
                 )
 
-            if saver is not None:
-                # save proper checkpoint with eval metric
-                save_metric = eval_metrics[eval_metric]
-                best_metric, best_epoch = saver.save_checkpoint(epoch, metric=save_metric)
+                if model_ema is not None and not args.model_ema_force_cpu:
+                    if args.distributed and args.dist_bn in ('broadcast', 'reduce'):
+                        utils.distribute_bn(model_ema, args.world_size, args.dist_bn == 'reduce')
 
-            if lr_scheduler is not None:
-                # step LR for next epoch
-                lr_scheduler.step(epoch + 1, eval_metrics[eval_metric])
+                    ema_eval_metrics = validate(
+                        model_ema.module,
+                        loader_eval,
+                        validate_loss_fn,
+                        args,
+                        amp_autocast=amp_autocast,
+                        log_suffix=' (EMA)',
+                    )
+                    eval_metrics = ema_eval_metrics
 
-    except KeyboardInterrupt:
-        pass
+                if output_dir is not None:
+                    lrs = [param_group['lr'] for param_group in optimizer.param_groups]
+                    utils.update_summary(
+                        epoch,
+                        train_metrics,
+                        eval_metrics,
+                        filename=os.path.join(output_dir, 'summary.csv'),
+                        lr=sum(lrs) / len(lrs),
+                        write_header=best_metric is None,
+                        log_wandb=args.log_wandb and has_wandb,
+                    )
 
-    if best_metric is not None:
-        _logger.info('*** Best metric: {0} (epoch {1})'.format(best_metric, best_epoch))
+                if saver is not None:
+                    # save proper checkpoint with eval metric
+                    save_metric = eval_metrics[eval_metric]
+                    best_metric, best_epoch = saver.save_checkpoint(epoch, metric=save_metric)
 
+                if lr_scheduler is not None:
+                    # step LR for next epoch
+                    lr_scheduler.step(epoch + 1, eval_metrics[eval_metric])
+
+        except KeyboardInterrupt:
+            pass
+
+        if best_metric is not None:
+            _logger.info('*** Best metric: {0} (epoch {1})'.format(best_metric, best_epoch))
+
+    eval_metrics = validate(
+        model,
+        loader_eval,
+        validate_loss_fn,
+        args,
+        amp_autocast=amp_autocast,
+    )
 
 def train_one_epoch(
         epoch,
