@@ -115,6 +115,8 @@ group.add_argument('--resume', default='', type=str, metavar='PATH',
                    help='Resume full model and optimizer state from checkpoint (default: none)')
 group.add_argument('--no-resume-opt', action='store_true', default=False,
                    help='prevent resume of optimizer state when resuming model')
+group.add_argument('--non-strict', action='store_true', default=False,
+                   help='mismatched layers from loaded checkpoint will be omitted')
 group.add_argument('--num-classes', type=int, default=None, metavar='N',
                    help='number of label classes (Model default if None)')
 group.add_argument('--gp', default=None, type=str, metavar='POOL',
@@ -544,6 +546,7 @@ def main():
             optimizer=None if args.no_resume_opt else optimizer,
             loss_scaler=None if args.no_resume_opt else loss_scaler,
             log_info=utils.is_primary(args),
+            strict_load= not args.non_strict
         )
 
     # setup exponential moving average of model weights, SWA could be used here too
