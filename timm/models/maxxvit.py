@@ -22,10 +22,10 @@ MaxViT: Multi-Axis Vision Transformer - https://arxiv.org/abs/2204.01697
   year={2022},
 }
 
-CoAtNet: Marrying Convolution and Attention for All Data Sizes - https://arxiv.org/abs/2106.04803
+CoAtNet: Marrying Convolution and Attention for All data Sizes - https://arxiv.org/abs/2106.04803
 @article{DBLP:journals/corr/abs-2106-04803,
   author    = {Zihang Dai and Hanxiao Liu and Quoc V. Le and Mingxing Tan},
-  title     = {CoAtNet: Marrying Convolution and Attention for All Data Sizes},
+  title     = {CoAtNet: Marrying Convolution and Attention for All data Sizes},
   journal   = {CoRR},
   volume    = {abs/2106.04803},
   year      = {2021}
