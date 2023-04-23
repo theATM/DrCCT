@@ -1,5 +1,12 @@
 # IDE
-.ide
+.idea/*
+data/*
+models/*
+pretrained/*
+*.jpg
+*.png
+
+timm/output/*
 
 
 # Generated:
