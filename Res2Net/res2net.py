@@ -1,3 +1,23 @@
+import torch
+import torch.nn as nn
+
+__all__ = ['ImageNetRes2Net', 'res2net50', 'res2net101',
+           'res2net152', 'res2next50_32x4d',
+           'CifarRes2Net', 'res2next29_6cx24wx4scale',
+           'res2next29_8cx25wx4scale', 'res2next29_6cx24wx6scale',
+           'res2next29_6cx24wx4scale_se', 'res2next29_8cx25wx4scale_se',
+           'res2next29_6cx24wx6scale_se']
+
+
+def conv3x3(in_planes, out_planes, stride=1, groups=1):
+    """3x3 convolution with padding"""
+    return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
+                     padding=1, groups=groups, bias=False)
+
+
+def conv1x1(in_planes, out_planes, stride=1):
+    """1x1 convolution"""
+    return nn.Conv2d(in_planes, out_planes, kernel_size=1, stride=stride, bias=False)
 
 import torch.nn as nn
 import math
@@ -121,7 +141,17 @@ class Res2Net(nn.Module):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
 
-    def _make_layer(self, block, planes, blocks, stride=1):
+        # Zero-initialize the last BN in each residual branch,
+        # so that the residual branch starts with zeros, and each residual block behaves like an identity.
+        # This improves the model by 0.2~0.3% according to https://arxiv.org/abs/1706.02677
+        if zero_init_residual:
+            for m in self.modules():
+                if isinstance(m, Res2NetBottleneck):
+                    nn.init.constant_(m.bn3.weight, 0)
+
+    def _make_layer(self, block, planes, blocks, stride=1, groups=1, norm_layer=None):
+        if norm_layer is None:
+            norm_layer = nn.BatchNorm2d
         downsample = None
         if stride != 1 or self.inplanes != planes * block.expansion:
             downsample = nn.Sequential(
@@ -131,11 +161,10 @@ class Res2Net(nn.Module):
             )
 
         layers = []
-        layers.append(block(self.inplanes, planes, stride, downsample=downsample, 
-                        stype='stage', baseWidth = self.baseWidth, scale=self.scale))
+        layers.append(block(self.inplanes, planes, stride, downsample, groups, norm_layer))
         self.inplanes = planes * block.expansion
-        for i in range(1, blocks):
-            layers.append(block(self.inplanes, planes, baseWidth = self.baseWidth, scale=self.scale))
+        for _ in range(1, blocks):
+            layers.append(block(self.inplanes, planes, groups=groups, norm_layer=norm_layer))
 
         return nn.Sequential(*layers)
 
@@ -208,20 +237,9 @@ def res2net50_26w_8s(pretrained=False, **kwargs):
         model.load_state_dict(model_zoo.load_url(model_urls['res2net50_26w_8s']))
     return model
 
-def res2net50_48w_2s(pretrained=False, **kwargs):
-    """Constructs a Res2Net-50_48w_2s model.
-    Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
-    """
-    model = Res2Net(Bottle2neck, [3, 4, 6, 3], baseWidth = 48, scale = 2, **kwargs)
-    if pretrained:
-        model.load_state_dict(model_zoo.load_url(model_urls['res2net50_48w_2s']))
-    return model
 
-def res2net50_14w_8s(pretrained=False, **kwargs):
-    """Constructs a Res2Net-50_14w_8s model.
-    Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
+def res2next29_6cx24wx4scale(**kwargs):
+    """Constructs a Res2NeXt-29, 6cx24wx4scale model.
     """
     model = Res2Net(Bottle2neck, [3, 4, 6, 3], baseWidth = 14, scale = 8, **kwargs)
     if pretrained:
