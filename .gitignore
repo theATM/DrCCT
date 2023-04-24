@@ -7,6 +7,7 @@ pretrained/*
 *.png
 
 timm/output/*
+Res2Net/models/*
 
 
 # Generated:
