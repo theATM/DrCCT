@@ -1,7 +1,6 @@
 import os
 import argparse
 import numpy as np
-from str2bool import str2bool
 from tqdm import tqdm
 import pandas as pd
 import joblib
@@ -15,7 +14,7 @@ from torch.optim import lr_scheduler
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 
-import utils
+from utils import *
 import res2net
 
 
@@ -28,7 +27,7 @@ def parse_args():
                         choices=['cifar100'],
                         help='dataset name')
     parser.add_argument('--arch', default='res2next29_6cx24wx6scale_se',
-                        #choices=res2net.__all__, - only 2 basic arch
+                        choices=res2net.__all__,
                         help='model architecture')
     parser.add_argument('--epochs', default=300, type=int)
     parser.add_argument('--lr', '--learning-rate', default=1e-1, type=float)
@@ -44,11 +43,12 @@ def parse_args():
 
 
 def train(args, train_loader, model, criterion, optimizer, epoch, scheduler=None):
-    losses = utils.AverageMeter()
-    acc1s = utils.AverageMeter()
-    acc5s = utils.AverageMeter()
+    losses = AverageMeter()
+    acc1s = AverageMeter()
+    acc5s = AverageMeter()
 
     model.train()
+
 
     for i, (input, target) in tqdm(enumerate(train_loader), total=len(train_loader)):
         input = input.cuda()
@@ -57,7 +57,7 @@ def train(args, train_loader, model, criterion, optimizer, epoch, scheduler=None
         output = model(input)
         loss = criterion(output, target)
 
-        acc1, acc5 = utils.accuracy(output, target, topk=(1, 5))
+        acc1, acc5 = accuracy(output, target, topk=(1, 5))
 
         losses.update(loss.item(), input.size(0))
         acc1s.update(acc1.item(), input.size(0))
@@ -78,9 +78,9 @@ def train(args, train_loader, model, criterion, optimizer, epoch, scheduler=None
 
 
 def validate(args, val_loader, model, criterion):
-    losses = utils.AverageMeter()
-    acc1s = utils.AverageMeter()
-    acc5s = utils.AverageMeter()
+    losses = AverageMeter()
+    acc1s = AverageMeter()
+    acc5s = AverageMeter()
 
     # switch to evaluate mode
     model.eval()
@@ -93,7 +93,7 @@ def validate(args, val_loader, model, criterion):
             output = model(input)
             loss = criterion(output, target)
 
-            acc1, acc5 = utils.accuracy(output, target, topk=(1, 5))
+            acc1, acc5 = accuracy(output, target, topk=(1, 5))
 
             losses.update(loss.item(), input.size(0))
             acc1s.update(acc1.item(), input.size(0))
@@ -154,7 +154,7 @@ def main():
             transform=transform_train)
         train_loader = torch.utils.data.DataLoader(
             train_set,
-            batch_size=16,
+            batch_size=64,
             shuffle=True,
             num_workers=8)
 
@@ -189,12 +189,13 @@ def main():
     for epoch in range(args.epochs):
         print('Epoch [%d/%d]' %(epoch+1, args.epochs))
 
-        scheduler.step()
 
         # train for one epoch
         train_log = train(args, train_loader, model, criterion, optimizer, epoch)
         # evaluate on validation set
         val_log = validate(args, test_loader, model, criterion)
+
+        scheduler.step()
 
         print('loss %.4f - acc1 %.4f - acc5 %.4f - val_loss %.4f - val_acc %.4f - val_acc5 %.4f'
             %(train_log['loss'], train_log['acc1'], train_log['acc5'], val_log['loss'], val_log['acc1'], val_log['acc5']))
