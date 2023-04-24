@@ -154,7 +154,7 @@ def main():
             transform=transform_train)
         train_loader = torch.utils.data.DataLoader(
             train_set,
-            batch_size=128,
+            batch_size=16,
             shuffle=True,
             num_workers=8)
 

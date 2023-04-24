@@ -6,7 +6,7 @@ __all__ = ['ImageNetRes2Net', 'res2net50', 'res2net101',
            'CifarRes2Net', 'res2next29_6cx24wx4scale',
            'res2next29_8cx25wx4scale', 'res2next29_6cx24wx6scale',
            'res2next29_6cx24wx4scale_se', 'res2next29_8cx25wx4scale_se',
-           'res2next29_6cx24wx6scale_se']
+           'res2next29_6cx24wx6scale_se', 'resnext29_6cx24wx4scale']
 
 
 def conv3x3(in_planes, out_planes, stride=1, groups=1):
@@ -115,7 +115,31 @@ class Bottle2neck(nn.Module):
 
         return out
 
-class Res2Net(nn.Module):
+class Bottleneck(Res2NetBottleneck):
+
+    def __init__(self, inplanes, planes, downsample=None, stride=1, scales=4, groups=1, se=False,  norm_layer=None):
+        super().__init__(inplanes, planes, downsample, stride, scales, groups, se,  norm_layer)
+        bottleneck_planes = groups * planes
+        self.conv1 = nn.Conv2d(inplanes, bottleneck_planes, kernel_size=1, stride=1, padding=0, bias=False)
+        self.bn1 = norm_layer(bottleneck_planes)
+        self.conv2 = nn.Conv2d(bottleneck_planes, bottleneck_planes, kernel_size=3, stride=stride, padding=1, groups=groups, bias=False)
+        self.bn2 = norm_layer(bottleneck_planes)
+        self.conv3 = nn.Conv2d(bottleneck_planes, self.expansion*planes, kernel_size=1, stride=1, padding=0, bias=False)
+        self.bn3 = norm_layer(self.expansion*planes)
+
+    def forward(self, x):
+        identity = x
+
+        y = self.relu(self.bn1(self.conv1(x)))
+        y = self.relu(self.bn2(self.conv2(y)))
+        y = self.bn3(self.conv3(y))
+
+        if self.downsample is not None:
+            identity = self.downsample(identity)
+
+        y += identity
+        y = self.relu(y)
+        return y
 
     def __init__(self, block, layers, baseWidth = 26, scale = 4, num_classes=1000):
         self.inplanes = 64
@@ -186,7 +210,140 @@ class Res2Net(nn.Module):
         return x
 
 
-def res2net50(pretrained=False, **kwargs):
+class CifarRes2Net(nn.Module):
+    def __init__(self, layers, num_classes=100, zero_init_residual=False,
+                 groups=1, width=64, scales=4, se=False, norm_layer=None):
+        super(CifarRes2Net, self).__init__()
+        if norm_layer is None:
+            norm_layer = nn.BatchNorm2d
+
+        planes = [int(width * scales * 2 ** i) for i in range(3)]
+        self.inplanes = planes[0]
+        self.conv1 = conv3x3(3, planes[0])
+        self.bn1 = norm_layer(planes[0])
+        self.relu = nn.ReLU(inplace=True)
+        self.layer1 = self._make_layer(Res2NetBottleneck, planes[0], layers[0], scales=scales, groups=groups, se=se, norm_layer=norm_layer)
+        self.layer2 = self._make_layer(Res2NetBottleneck, planes[1], layers[1], stride=2, scales=scales, groups=groups, se=se, norm_layer=norm_layer)
+        self.layer3 = self._make_layer(Res2NetBottleneck, planes[2], layers[2], stride=2, scales=scales, groups=groups, se=se, norm_layer=norm_layer)
+        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+        self.fc = nn.Linear(planes[2] * Res2NetBottleneck.expansion, num_classes)
+
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+            elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
+
+        # Zero-initialize the last BN in each residual branch,
+        # so that the residual branch starts with zeros, and each residual block behaves like an identity.
+        # This improves the model by 0.2~0.3% according to https://arxiv.org/abs/1706.02677
+        if zero_init_residual:
+            for m in self.modules():
+                if isinstance(m, Res2NetBottleneck):
+                    nn.init.constant_(m.bn3.weight, 0)
+
+    def _make_layer(self, block, planes, blocks, stride=1, scales=4, groups=1, se=False, norm_layer=None):
+        if norm_layer is None:
+            norm_layer = nn.BatchNorm2d
+        downsample = None
+        if stride != 1 or self.inplanes != planes * block.expansion:
+            downsample = nn.Sequential(
+                conv1x1(self.inplanes, planes * block.expansion, stride),
+                norm_layer(planes * block.expansion),
+            )
+
+        layers = []
+        layers.append(block(self.inplanes, planes, downsample, stride=stride, scales=scales, groups=groups, se=se, norm_layer=norm_layer))
+        self.inplanes = planes * block.expansion
+        for _ in range(1, blocks):
+            layers.append(block(self.inplanes, planes, scales=scales, groups=groups, se=se, norm_layer=norm_layer))
+
+        return nn.Sequential(*layers)
+
+    def forward(self, x):
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu(x)
+
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+
+        x = self.avgpool(x)
+        x = x.view(x.size(0), -1)
+        x = self.fc(x)
+
+        return x
+
+class CifarResNeXt(nn.Module):
+    def __init__(self, layers, num_classes=100, zero_init_residual=False,
+                 groups=1, width=64, scales=4, se=False, norm_layer=None):
+        super(CifarResNeXt, self).__init__()
+        if norm_layer is None:
+            norm_layer = nn.BatchNorm2d
+
+        planes = [int(width * scales * 2 ** i) for i in range(3)]
+        self.inplanes = planes[0]
+        self.conv1 = conv3x3(3, planes[0])
+        self.bn1 = norm_layer(planes[0])
+        self.relu = nn.ReLU(inplace=True)
+        self.layer1 = self._make_layer(Bottleneck, planes[0], layers[0], scales=scales, groups=groups, se=se, norm_layer=norm_layer)
+        self.layer2 = self._make_layer(Bottleneck, planes[1], layers[1], stride=2, scales=scales, groups=groups, se=se, norm_layer=norm_layer)
+        self.layer3 = self._make_layer(Bottleneck, planes[2], layers[2], stride=2, scales=scales, groups=groups, se=se, norm_layer=norm_layer)
+        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+        self.fc = nn.Linear(planes[2] * Bottleneck.expansion, num_classes)
+
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+            elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
+
+        # Zero-initialize the last BN in each residual branch,
+        # so that the residual branch starts with zeros, and each residual block behaves like an identity.
+        # This improves the model by 0.2~0.3% according to https://arxiv.org/abs/1706.02677
+        if zero_init_residual:
+            for m in self.modules():
+                if isinstance(m, Bottleneck):
+                    nn.init.constant_(m.bn3.weight, 0)
+
+    def _make_layer(self, block, planes, blocks, stride=1, scales=4, groups=1, se=False, norm_layer=None):
+        if norm_layer is None:
+            norm_layer = nn.BatchNorm2d
+        downsample = None
+        if stride != 1 or self.inplanes != planes * block.expansion:
+            downsample = nn.Sequential(
+                conv1x1(self.inplanes, planes * block.expansion, stride),
+                norm_layer(planes * block.expansion),
+            )
+
+        layers = []
+        layers.append(block(self.inplanes, planes, downsample, stride=stride, scales=scales, groups=groups, se=se, norm_layer=norm_layer))
+        self.inplanes = planes * block.expansion
+        for _ in range(1, blocks):
+            layers.append(block(self.inplanes, planes, scales=scales, groups=groups, se=se, norm_layer=norm_layer))
+
+        return nn.Sequential(*layers)
+
+    def forward(self, x):
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu(x)
+
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+
+        x = self.avgpool(x)
+        x = x.view(x.size(0), -1)
+        x = self.fc(x)
+
+        return x
+
+
+def res2net50(**kwargs):
     """Constructs a Res2Net-50 model.
     Res2Net-50 refers to the Res2Net-50_26w_4s.
     Args:
@@ -241,9 +398,20 @@ def res2net50_26w_8s(pretrained=False, **kwargs):
 def res2next29_6cx24wx4scale(pretrained=False, **kwargs):
     """Constructs a Res2NeXt-29, 6cx24wx4scale model.
     """
-    model = Res2Net(Bottle2neck, [3, 4, 6, 3], baseWidth = 14, scale = 8, **kwargs)
-    if pretrained:
-        model.load_state_dict(model_zoo.load_url(model_urls['res2net50_14w_8s']))
+    model = CifarRes2Net([3, 3, 3], groups=6, width=24, scales=4, **kwargs)
+    return model
+
+def resnext29_6cx24wx4scale(**kwargs):
+    """Constructs a ResNeXt-29, 6cx25wx4scale model.
+       """
+    model = CifarResNeXt([3, 3, 3], groups=6, width=24, scales=4, **kwargs)
+    return model
+
+
+def res2next29_8cx25wx4scale(**kwargs):
+    """Constructs a Res2NeXt-29, 8cx25wx4scale model.
+    """
+    model = CifarRes2Net([3, 3, 3], groups=8, width=25, scales=4, **kwargs)
     return model
 
 
