@@ -238,7 +238,7 @@ def res2net50_26w_8s(pretrained=False, **kwargs):
     return model
 
 
-def res2next29_6cx24wx4scale(**kwargs):
+def res2next29_6cx24wx4scale(pretrained=False, **kwargs):
     """Constructs a Res2NeXt-29, 6cx24wx4scale model.
     """
     model = Res2Net(Bottle2neck, [3, 4, 6, 3], baseWidth = 14, scale = 8, **kwargs)

@@ -1,6 +1,7 @@
 import os
 import argparse
 import numpy as np
+from str2bool import str2bool
 from tqdm import tqdm
 import pandas as pd
 import joblib
@@ -14,7 +15,7 @@ from torch.optim import lr_scheduler
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 
-from utils import *
+import utils
 import res2net
 
 
@@ -27,7 +28,7 @@ def parse_args():
                         choices=['cifar100'],
                         help='dataset name')
     parser.add_argument('--arch', default='res2next29_6cx24wx6scale_se',
-                        choices=res2net.__all__,
+                        #choices=res2net.__all__, - only 2 basic arch
                         help='model architecture')
     parser.add_argument('--epochs', default=300, type=int)
     parser.add_argument('--lr', '--learning-rate', default=1e-1, type=float)
@@ -43,9 +44,9 @@ def parse_args():
 
 
 def train(args, train_loader, model, criterion, optimizer, epoch, scheduler=None):
-    losses = AverageMeter()
-    acc1s = AverageMeter()
-    acc5s = AverageMeter()
+    losses = utils.AverageMeter()
+    acc1s = utils.AverageMeter()
+    acc5s = utils.AverageMeter()
 
     model.train()
 
@@ -56,7 +57,7 @@ def train(args, train_loader, model, criterion, optimizer, epoch, scheduler=None
         output = model(input)
         loss = criterion(output, target)
 
-        acc1, acc5 = accuracy(output, target, topk=(1, 5))
+        acc1, acc5 = utils.accuracy(output, target, topk=(1, 5))
 
         losses.update(loss.item(), input.size(0))
         acc1s.update(acc1.item(), input.size(0))
@@ -77,9 +78,9 @@ def train(args, train_loader, model, criterion, optimizer, epoch, scheduler=None
 
 
 def validate(args, val_loader, model, criterion):
-    losses = AverageMeter()
-    acc1s = AverageMeter()
-    acc5s = AverageMeter()
+    losses = utils.AverageMeter()
+    acc1s = utils.AverageMeter()
+    acc5s = utils.AverageMeter()
 
     # switch to evaluate mode
     model.eval()
@@ -92,7 +93,7 @@ def validate(args, val_loader, model, criterion):
             output = model(input)
             loss = criterion(output, target)
 
-            acc1, acc5 = accuracy(output, target, topk=(1, 5))
+            acc1, acc5 = utils.accuracy(output, target, topk=(1, 5))
 
             losses.update(loss.item(), input.size(0))
             acc1s.update(acc1.item(), input.size(0))
