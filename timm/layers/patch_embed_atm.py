@@ -54,10 +54,15 @@ class PatchEmbed(nn.Module):
             self.output_fmt = Format.NCHW
 
         #self.proj = nn.Conv2d(in_chans, embed_dim, kernel_size=patch_size, stride=patch_size, bias=bias)
+
+
         import sys
         sys.path.append('/home/olek/Documents/Projects/Draszcze/DraszczeProject/Res2Net')
-        from res2net import Bottle2neck
-        self.proj = Bottle2neck(3,embed_dim,patch_size) # 3, 244,
+        from res2net import Res2NetBottleneck
+
+
+
+        self.proj = Res2NetBottleneck(3,embed_dim,patch_size) # 3, 244,
         self.norm = norm_layer(embed_dim) if norm_layer else nn.Identity()
 
     def forward(self, x):

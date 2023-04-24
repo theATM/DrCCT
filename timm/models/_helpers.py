@@ -120,7 +120,14 @@ def resume_checkpoint(
             if log_info:
                 _logger.info('Restoring model state from checkpoint...')
             state_dict = clean_state_dict(checkpoint['state_dict'])
-            model.load_state_dict(state_dict)
+            if strict_load is False and state_dict['head.weight'].shape != model.state_dict()['head.weight'].shape:
+                # Remove head if it mismatches
+                _logger.info(f"Removing head from the checkpoint because of the size mismatch "
+                             f"[{state_dict['head.weight'].shape[0]},{state_dict['head.weight'].shape[1]}] != "
+                             f"[{ model.state_dict()['head.weight'].shape[0]}, { model.state_dict()['head.weight'].shape[1]}]")
+                state_dict.pop('head.weight')
+                state_dict.pop('head.bias')
+            model.load_state_dict(state_dict,strict=strict_load)
 
             if optimizer is not None and 'optimizer' in checkpoint:
                 if log_info:
@@ -136,9 +143,11 @@ def resume_checkpoint(
                 resume_epoch = checkpoint['epoch']
                 if 'version' in checkpoint and checkpoint['version'] > 1:
                     resume_epoch += 1  # start at the next epoch, old checkpoints incremented before save
-
-            if log_info:
-                _logger.info("Loaded checkpoint '{}' (epoch {})".format(checkpoint_path, checkpoint['epoch']))
+                if log_info:
+                    _logger.info("Loaded checkpoint '{}' (epoch {})".format(checkpoint_path, checkpoint['epoch']))
+            else:
+                if log_info:
+                    _logger.info("Loaded checkpoint '{}' ".format(checkpoint_path))
         else:
             if strict_load is False and checkpoint['head.weight'].shape != model.state_dict()['head.weight'].shape:
                 # Remove head if it mismatches
