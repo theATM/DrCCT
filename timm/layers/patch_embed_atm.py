@@ -115,9 +115,7 @@ class Res2NetEmbed(PatchEmbed):
         for i in range(self.grid_size[0]):
             for j in range(self.grid_size[1]):
                 out_patches[:, i, j, :, :, :] = self.proj[i*j + j](patches[:, :, i, j, :, :, :].squeeze())
-        print(out_patches)
-
-
+        x = out_patches
         if self.flatten:
             x = x.flatten(2).transpose(1, 2)  # NCHW -> NLC
         elif self.output_fmt != Format.NCHW:
