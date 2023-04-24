@@ -95,9 +95,8 @@ class Res2NetEmbed(PatchEmbed):
         embedding = torch.zeros(B, self.embed_dim, 14, 14)
         for i in range(self.grid_size[0]):
             for j in range(self.grid_size[1]):
-                output = self.proj[i*j + j](patches[:, :, i, j, :, :, :].squeeze())
-                embedding[:, :, i, j] = self.output_filters(output).squeeze()
-        x = embedding
+                out_patches[:, i, j, :, :, :] = self.proj[i*j + j](patches[:, :, i, j, :, :, :].squeeze())
+        x = out_patches
         if self.flatten:
             x = x.flatten(2).transpose(1, 2)  # NCHW -> NLC
         elif self.output_fmt != Format.NCHW:
