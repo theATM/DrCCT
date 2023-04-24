@@ -904,24 +904,12 @@ def vit_atm_base_patch16_224(pretrained=False, **kwargs):
     ImageNet-1k weights fine-tuned from in21k @ 224x224, source https://github.com/google-research/vision_transformer.
     """
     model_args = dict(patch_size=16, embed_dim=768, depth=12, num_heads=12)
-    model = _create_vision_transformer('vit_base_patch16_224', pretrained=pretrained, **dict(model_args, **kwargs))
-    return model
-
-
-@register_model
-def vit_atm_base_patch16_224_miil(pretrained=False, **kwargs):
-    """ ViT-Base (ViT-B/16) from original paper (https://arxiv.org/abs/2010.11929).
-    Weights taken from: https://github.com/Alibaba-MIIL/ImageNet21K
-    """
-    model_args = dict(patch_size=16, embed_dim=768, depth=12, num_heads=12, qkv_bias=False)
-    model = _create_vision_transformer(
-        'vit_base_patch16_224_miil', pretrained=pretrained, **dict(model_args, **kwargs))
+    model = _create_vision_transformer('vit_atm_base_patch16_224', pretrained=pretrained, **dict(model_args, **kwargs))
     return model
 
 
 
 
 register_model_deprecations(__name__, {
-    'vit_atm_base_patch16_224_in21k': 'vit_atm_base_patch16_224.augreg_in21k',
-    'vit_atm_base_patch16_224_miil_in21k': 'vit_atm_base_patch16_224_miil.in21k',
+    'vit_atm_base_patch16_224_in21k': 'vit_atm_base_patch16_224.augreg_in21k'
 })
