@@ -111,6 +111,7 @@ def resume_checkpoint(
         optimizer: torch.optim.Optimizer = None,
         loss_scaler: Any = None,
         log_info: bool = True,
+        strict_load: bool = True
 ):
     resume_epoch = None
     if os.path.isfile(checkpoint_path):
@@ -139,9 +140,16 @@ def resume_checkpoint(
             if log_info:
                 _logger.info("Loaded checkpoint '{}' (epoch {})".format(checkpoint_path, checkpoint['epoch']))
         else:
-            # TODO TO LoAD UNPURE MODE
-            model.load_state_dict(checkpoint)
-            #model.load_state_dict(checkpoint,strict=False)
+            if strict_load is False and checkpoint['head.weight'].shape != model.state_dict()['head.weight'].shape:
+                # Remove head if it mismatches
+                _logger.info(f"Removing head from the checkpoint because of the size mismatch "
+                             f"[{checkpoint['head.weight'].shape[0]},{checkpoint['head.weight'].shape[1]}] != "
+                             f"[{ model.state_dict()['head.weight'].shape[0]}, { model.state_dict()['head.weight'].shape[1]}]")
+                checkpoint.pop('head.weight')
+                checkpoint.pop('head.bias')
+
+
+            model.load_state_dict(checkpoint,strict=strict_load)
             if log_info:
                 _logger.info("Loaded checkpoint '{}'".format(checkpoint_path))
         return resume_epoch

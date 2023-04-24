@@ -1,5 +1,13 @@
 # IDE
-.ide
+.idea/*
+data/*
+models/*
+pretrained/*
+*.jpg
+*.png
+
+timm/output/*
+Res2Net/models/*
 
 
 # Generated:
