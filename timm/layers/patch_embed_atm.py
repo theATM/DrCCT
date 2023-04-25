@@ -115,7 +115,7 @@ class Res2NetEmbed(PatchEmbed):
         _assert(W == self.img_size[1], f"Input image width ({W}) doesn't match model ({self.img_size[1]}).")
         x = self.input_filters(x)
         patches = x.unfold(1, self.inplanes_first_layer, self.inplanes_first_layer).unfold(2, self.patch_size[0], self.patch_size[1]).unfold(3, self.patch_size[0], self.patch_size[1])
-        embedding = torch.zeros(B, self.embed_dim, self.grid_size, self.grid_size).cuda()
+        embedding = torch.zeros(B, self.embed_dim, self.grid_size[0], self.grid_size[1]).cuda()
         for i in range(self.grid_size[0]):
             for j in range(self.grid_size[1]):
                 output = self.proj[i*j + j](patches[:, :, i, j, :, :, :].squeeze())
