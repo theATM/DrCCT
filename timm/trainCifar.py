@@ -27,6 +27,7 @@ import torch
 import torch.nn as nn
 import torchvision.utils
 import yaml
+from matplotlib import pyplot as plt
 from torch.nn.parallel import DistributedDataParallel as NativeDDP
 
 from timm import utils
@@ -878,6 +879,8 @@ def train_one_epoch(
     last_idx = num_batches_per_epoch - 1
     num_updates = epoch * num_batches_per_epoch
     for batch_idx, (input, target) in enumerate(loader):
+        plt.imshow((input[0].cpu().numpy().transpose([1,2,0])+1))
+        plt.show()
         last_batch = batch_idx == last_idx
         data_time_m.update(time.time() - end)
         if not args.prefetcher:

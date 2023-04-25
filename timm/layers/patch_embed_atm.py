@@ -109,6 +109,8 @@ class Res2NetEmbed(PatchEmbed):
         self.norm = norm_layer(embed_dim) if norm_layer else nn.Identity()
     def forward(self, x):
         B, C, H, W = x.shape
+        plt.imshow((x[0].cpu().numpy().transpose([1, 2, 0]) + 1))
+        plt.show()
         _assert(H == self.img_size[0], f"Input image height ({H}) doesn't match model ({self.img_size[0]}).")
         _assert(W == self.img_size[1], f"Input image width ({W}) doesn't match model ({self.img_size[1]}).")
         x = self.input_filters(x)
