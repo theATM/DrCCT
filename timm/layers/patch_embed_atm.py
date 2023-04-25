@@ -103,7 +103,7 @@ class Res2NetEmbed(PatchEmbed):
         self.in_chans = in_chans
         self.embed_dim = embed_dim
         self.inplanes = embed_dim // 4 # changes
-        self.inplanes_first_layer = embed_dim // 4 # stays fixed
+        self.inplanes_first_layer = self.inplanes # stays fixed
         self.input_filters = nn.Conv2d(self.in_chans, self.inplanes, kernel_size=(1, 1))
         self.proj = nn.ModuleList([self._make_layer(Res2NetBottleneck, embed_dim // 4, 1) for _ in range(self.num_patches)])
         self.output_filters = nn.Conv2d(self.embed_dim, self.embed_dim, kernel_size=self.patch_size, stride=self.patch_size)
@@ -116,7 +116,7 @@ class Res2NetEmbed(PatchEmbed):
         _assert(W == self.img_size[1], f"Input image width ({W}) doesn't match model ({self.img_size[1]}).")
         x = self.input_filters(x)
         patches = x.unfold(1, self.inplanes_first_layer, self.inplanes_first_layer).unfold(2, self.patch_size[0], self.patch_size[1]).unfold(3, self.patch_size[0], self.patch_size[1])
-        embedding = torch.zeros(B, self.embed_dim, 14, 14).cuda()
+        embedding = torch.zeros(B, self.embed_dim, self.grid_size[0], self.grid_size[1]).cuda()
         for i in range(self.grid_size[0]):
             for j in range(self.grid_size[1]):
                 output = self.proj[i*j + j](patches[:, :, i, j, :, :, :].squeeze())
