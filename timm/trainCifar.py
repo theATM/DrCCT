@@ -434,6 +434,7 @@ def main():
         bn_eps=args.bn_eps,
         scriptable=args.torchscript,
         checkpoint_path=args.initial_checkpoint,
+        strict = not args.non_strict,
         **args.model_kwargs,
     )
     if args.num_classes is None:

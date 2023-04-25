@@ -3,6 +3,7 @@ import torch.nn as nn
 from .utils.transformers import TransformerClassifier
 from .utils.tokenizer import Tokenizer, Res2NetTokenizer
 from .utils.helpers import pe_check, fc_check
+from timm.models._helpers import chaff_removal
 
 try:
     from timm.models.registry import register_model
@@ -196,7 +197,9 @@ def _cct_hybrid(arch, pretrained, progress,
             elif positional_embedding == 'sine':
                 state_dict['classifier.positional_emb'] = model.state_dict()['classifier.positional_emb']
             state_dict = fc_check(model, state_dict)
-            model.load_state_dict(state_dict)
+            if kwargs['strict'] is False:
+                chaff_removal(state_dict,model.state_dict())
+            model.load_state_dict(state_dict,kwargs['strict'])
         else:
             raise RuntimeError(f'Variant {arch} does not yet have pretrained weights.')
     return model
