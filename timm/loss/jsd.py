@@ -9,7 +9,7 @@ class JsdCrossEntropy(nn.Module):
     """ Jensen-Shannon Divergence + Cross-Entropy Loss
 
     Based on impl here: https://github.com/google-research/augmix/blob/master/imagenet.py
-    From paper: 'AugMix: A Simple Data Processing Method to Improve Robustness and Uncertainty -
+    From paper: 'AugMix: A Simple data Processing Method to Improve Robustness and Uncertainty -
     https://arxiv.org/abs/1912.02781
 
     Hacked together by / Copyright 2020 Ross Wightman

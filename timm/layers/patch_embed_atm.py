@@ -18,9 +18,10 @@ import torch.nn.functional as F
 from .format import Format, nchw_to
 from .helpers import to_2tuple
 from .trace_utils import _assert
+import matplotlib.pyplot as plt
+from Res2Net.res2net import Res2NetBottleneck
 
 _logger = logging.getLogger(__name__)
-
 
 class PatchEmbed(nn.Module):
     """ 2D Image to Patch Embedding
@@ -40,6 +41,7 @@ class PatchEmbed(nn.Module):
     ):
         super().__init__()
         img_size = to_2tuple(img_size)
+        print("Patch zize = ", str(patch_size))
         patch_size = to_2tuple(patch_size)
         self.img_size = img_size
         self.patch_size = patch_size
@@ -53,12 +55,12 @@ class PatchEmbed(nn.Module):
             self.flatten = flatten
             self.output_fmt = Format.NCHW
 
-        #self.proj = nn.Conv2d(in_chans, embed_dim, kernel_size=patch_size, stride=patch_size, bias=bias)
-        import sys
-        sys.path.append('/home/olek/Documents/Projects/Draszcze/DraszczeProject/Res2Net')
-        from res2net import Bottle2neck
-        self.proj = Bottle2neck(3,embed_dim,patch_size) # 3, 244,
-        self.norm = norm_layer(embed_dim) if norm_layer else nn.Identity()
+        self.proj = nn.Conv2d(in_chans, embed_dim, kernel_size=patch_size, stride=patch_size, bias=bias)
+        # import sys
+        # sys.path.append('/home/olek/Documents/Projects/Draszcze/DraszczeProject/Res2Net')
+        # from res2net import Bottle2neck
+        # self.proj = Bottle2neck(3,embed_dim,patch_size) # 3, 244,
+        # self.norm = norm_layer(embed_dim) if norm_layer else nn.Identity()
 
 class Res2NetEmbed(PatchEmbed):
     output_fmt: Format
@@ -99,7 +101,77 @@ class Res2NetEmbed(PatchEmbed):
         x = self.norm(x)
         return x
 
+def conv3x3(in_planes, out_planes, stride=1, groups=1):
+    """3x3 convolution with padding"""
+    return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
+                     padding=1, groups=groups, bias=False)
 
+
+def conv1x1(in_planes, out_planes, stride=1):
+    """1x1 convolution"""
+    return nn.Conv2d(in_planes, out_planes, kernel_size=1, stride=stride, bias=False)
+
+
+
+class Res2NetEmbed(PatchEmbed):
+    output_fmt: Format
+    def __init__(
+            self,
+            img_size: int = 224,
+            patch_size: int = 16,
+            in_chans: int = 3,
+            embed_dim: int = 768,
+            norm_layer: Optional[Callable] = None,
+            flatten: bool = True,
+            output_fmt: Optional[str] = None,
+            bias: bool = True,
+    ):
+        super().__init__(img_size, patch_size, in_chans, embed_dim, norm_layer, flatten, output_fmt, bias)
+        self.in_chans = in_chans
+        self.embed_dim = embed_dim
+        self.inplanes = embed_dim // 4 # changes
+        self.inplanes_first_layer = self.inplanes # stays fixed
+        self.input_filters = nn.Conv2d(self.in_chans, self.inplanes, kernel_size=(1, 1))
+        self.proj = nn.ModuleList([self._make_layer(Res2NetBottleneck, embed_dim // 4, 1) for _ in range(self.num_patches)])
+        self.output_filters = nn.Conv2d(self.embed_dim, self.embed_dim, kernel_size=self.patch_size, stride=self.patch_size)
+        self.norm = norm_layer(embed_dim) if norm_layer else nn.Identity()
+    def forward(self, x):
+        B, C, H, W = x.shape
+        #plt.imshow((x[0].cpu().numpy().transpose([1, 2, 0]) + 1))
+        #plt.show()
+        _assert(H == self.img_size[0], f"Input image height ({H}) doesn't match model ({self.img_size[0]}).")
+        _assert(W == self.img_size[1], f"Input image width ({W}) doesn't match model ({self.img_size[1]}).")
+        x = self.input_filters(x)
+        patches = x.unfold(1, self.inplanes_first_layer, self.inplanes_first_layer).unfold(2, self.patch_size[0], self.patch_size[1]).unfold(3, self.patch_size[0], self.patch_size[1])
+        embedding = torch.zeros(B, self.embed_dim, self.grid_size[0], self.grid_size[1]).cuda()
+        for i in range(self.grid_size[0]):
+            for j in range(self.grid_size[1]):
+                output = self.proj[i*j + j](patches[:, :, i, j, :, :, :].squeeze())
+                embedding[:, :, i, j] = self.output_filters(output).squeeze()
+        x = embedding
+        if self.flatten:
+            x = x.flatten(2).transpose(1, 2)  # NCHW -> NLC
+        elif self.output_fmt != Format.NCHW:
+            x = nchw_to(x, self.output_fmt)
+        x = self.norm(x)
+        return x
+    def _make_layer(self, block, planes, blocks, stride=1, groups=1, norm_layer=None):
+        if norm_layer is None:
+            norm_layer = nn.BatchNorm2d
+        downsample = None
+        if stride != 1 or self.inplanes != planes * block.expansion:
+            downsample = nn.Sequential(
+                conv1x1(self.inplanes, planes * block.expansion, stride),
+                norm_layer(planes * block.expansion),
+            )
+
+        layers = []
+        layers.append(block(self.inplanes, planes, stride=stride, downsample=downsample, groups=groups, norm_layer=norm_layer))
+        #self.inplanes = planes * block.expansion
+        for _ in range(1, blocks):
+            layers.append(block(self.inplanes, planes, groups=groups, norm_layer=norm_layer))
+
+        return nn.Sequential(*layers)
 def resample_patch_embed(
         patch_embed,
         new_size: List[int],

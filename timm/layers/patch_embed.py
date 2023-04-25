@@ -21,7 +21,7 @@ from .trace_utils import _assert
 
 _logger = logging.getLogger(__name__)
 
-
+import matplotlib.pyplot as plt
 class PatchEmbed(nn.Module):
     """ 2D Image to Patch Embedding
     """

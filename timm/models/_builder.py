@@ -15,7 +15,7 @@ from timm.models._manipulate import adapt_input_conv
 from timm.models._pretrained import PretrainedCfg
 from timm.models._prune import adapt_model_from_file
 from timm.models._registry import get_pretrained_cfg
-
+from timm.models._helpers import chaff_removal
 _logger = logging.getLogger(__name__)
 
 # Global variables for rarely used pretrained checkpoint download progress and hash check.
@@ -220,6 +220,8 @@ def load_pretrained(
                 classifier_bias = state_dict[classifier_name + '.bias']
                 state_dict[classifier_name + '.bias'] = classifier_bias[label_offset:]
 
+    if strict is False:
+        chaff_removal(state_dict,model.state_dict())
     model.load_state_dict(state_dict, strict=strict)
 
 

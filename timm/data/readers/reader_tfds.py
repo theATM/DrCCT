@@ -218,7 +218,7 @@ class ReaderTfds(Reader):
             self.global_num_workers = self.dist_num_replicas * self.num_workers
             global_worker_id = self.dist_rank * self.num_workers + worker_info.id
 
-            """ Data sharding
+            """ data sharding
             InputContext will assign subset of underlying TFRecord files to each 'pipeline' if used.
             My understanding is that using split, the underling TFRecord files will shuffle (shuffle_files=True)
             between the splits each iteration, but that understanding could be wrong.

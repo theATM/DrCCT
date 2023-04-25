@@ -39,7 +39,7 @@ from timm.data import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD, IMAGENET_INCE
     OPENAI_CLIP_MEAN, OPENAI_CLIP_STD
 from timm.layers import Mlp, DropPath, trunc_normal_, lecun_normal_, resample_patch_embed, \
     resample_abs_pos_embed, RmsNorm, PatchDropout, use_fused_attn
-from timm.layers.patch_embed_atm import PatchEmbed
+from timm.layers.patch_embed_atm import PatchEmbed, Res2NetEmbed
 from ._builder import build_model_with_cfg
 from ._manipulate import named_apply, checkpoint_seq, adapt_input_conv
 from ._registry import generate_default_cfgs, register_model, register_model_deprecations
@@ -406,7 +406,7 @@ class VisionTransformer(nn.Module):
             attn_drop_rate: float = 0.,
             drop_path_rate: float = 0.,
             weight_init: str = '',
-            embed_layer: Callable = PatchEmbed,
+            embed_layer: Callable = Res2NetEmbed,
             norm_layer: Optional[Callable] = None,
             act_layer: Optional[Callable] = None,
             block_fn: Callable = Block,
@@ -815,6 +815,7 @@ def checkpoint_filter_fn(
         adapt_layer_scale=False,
         interpolation='bicubic',
         antialias=True,
+        hybrid = False
 ):
     """ convert patch embedding weight from manual patchify + linear proj to conv"""
     import re
@@ -827,6 +828,8 @@ def checkpoint_filter_fn(
 
     for k, v in state_dict.items():
         if 'patch_embed.proj.weight' in k:
+            if hybrid:
+                continue
             O, I, H, W = model.patch_embed.proj.weight.shape
             if len(v.shape) < 4:
                 # For old models that I trained prior to conv based patchification
@@ -880,7 +883,7 @@ default_cfgs = generate_default_cfgs({
 })
 
 
-def _create_vision_transformer(variant, pretrained=False, **kwargs):
+def _create_vision_transformer(variant, pretrained=False, hybrid = False, **kwargs):
     if kwargs.get('features_only', None):
         raise RuntimeError('features_only not implemented for Vision Transformer models.')
 
@@ -889,7 +892,7 @@ def _create_vision_transformer(variant, pretrained=False, **kwargs):
         # interpolation, other pretrained models resize better w/ anti-aliased bicubic interpolation.
         _filter_fn = partial(checkpoint_filter_fn, interpolation='bilinear', antialias=False)
     else:
-        _filter_fn = checkpoint_filter_fn
+        _filter_fn = partial(checkpoint_filter_fn, hybrid = hybrid)
 
     return build_model_with_cfg(
         VisionTransformer, variant, pretrained,
@@ -904,12 +907,33 @@ def vit_atm_base_patch16_224(pretrained=False, **kwargs):
     ImageNet-1k weights fine-tuned from in21k @ 224x224, source https://github.com/google-research/vision_transformer.
     """
     model_args = dict(patch_size=16, embed_dim=768, depth=12, num_heads=12)
-    model = _create_vision_transformer('vit_atm_base_patch16_224', pretrained=pretrained, **dict(model_args, **kwargs))
+    model = _create_vision_transformer('vit_base_patch16_224', pretrained=pretrained, hybrid = True, **dict(model_args, **kwargs))
+    return model
+
+@register_model
+def vit_atm_base_patch16_224_miil(pretrained=False, **kwargs):
+    """ ViT-Base (ViT-B/16) from original paper (https://arxiv.org/abs/2010.11929).
+    Weights taken from: https://github.com/Alibaba-MIIL/ImageNet21K
+    """
+    model_args = dict(patch_size=16, embed_dim=768, depth=12, num_heads=12, qkv_bias=False)
+    model = _create_vision_transformer(
+        'vit_base_patch16_224_miil', pretrained=pretrained, hybrid = True , **dict(model_args, **kwargs))
+    return model
+
+@register_model
+def vit_atm_base_patch32_224(pretrained=False, **kwargs):
+    """ ViT-Base (ViT-B/32) from original paper (https://arxiv.org/abs/2010.11929).
+    ImageNet-1k weights fine-tuned from in21k, source https://github.com/google-research/vision_transformer.
+    """
+    model_args = dict(patch_size=32, embed_dim=768, depth=12, num_heads=12)
+    model = _create_vision_transformer('vit_base_patch32_224', pretrained=pretrained, hybrid = True, **dict(model_args, **kwargs))
     return model
 
 
 
 
 register_model_deprecations(__name__, {
-    'vit_atm_base_patch16_224_in21k': 'vit_atm_base_patch16_224.augreg_in21k'
+    'vit_atm_base_patch16_224_in21k': 'vit_atm_base_patch16_224.augreg_in21k',
+    'vit_atm_base_patch32_224_in21k': 'vit_atm_base_patch32_224.augreg_in21k',
+    'vit_atm_base_patch16_224_miil_in21k': 'vit_atm_base_patch16_224_miil.in21k',
 })
