@@ -2,6 +2,7 @@ from .beit import *
 from .byoanet import *
 from .byobnet import *
 from .cait import *
+from CCT_Original.src.cct import *
 from .coat import *
 from .convit import *
 from .convmixer import *
