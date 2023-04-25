@@ -1,7 +1,18 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from Res2Net.res2net import Res2NetBottleneck
 
+
+def conv3x3(in_planes, out_planes, stride=1, groups=1):
+    """3x3 convolution with padding"""
+    return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
+                     padding=1, groups=groups, bias=False)
+
+
+def conv1x1(in_planes, out_planes, stride=1):
+    """1x1 convolution"""
+    return nn.Conv2d(in_planes, out_planes, kernel_size=1, stride=stride, bias=False)
 
 class Tokenizer(nn.Module):
     def __init__(self,
@@ -48,7 +59,60 @@ class Tokenizer(nn.Module):
         if isinstance(m, nn.Conv2d):
             nn.init.kaiming_normal_(m.weight)
 
+class Res2NetTokenizer(nn.Module):
+    def __init__(self,
+                 kernel_size, stride, padding,
+                 pooling_kernel_size=3, pooling_stride=2, pooling_padding=1,
+                 n_conv_layers=1,
+                 n_input_channels=3,
+                 n_output_channels=64,
+                 in_planes=64,
+                 activation=None,
+                 max_pool=True,
+                 conv_bias=False):
+        super().__init__()
 
+        Res2NetBottleneck.expansion = 1
+        self.conv_layers = nn.Sequential(
+                nn.Conv2d(n_input_channels, in_planes,
+                          kernel_size=(kernel_size, kernel_size),
+                          stride=(stride, stride),
+                          padding=(padding, padding), bias=conv_bias),
+                self._make_layer(Res2NetBottleneck, in_planes, n_output_channels, 1,
+                          stride=stride),
+                nn.Identity() if activation is None else activation(),
+                nn.MaxPool2d(kernel_size=pooling_kernel_size,
+                             stride=pooling_stride,
+                             padding=pooling_padding) if max_pool else nn.Identity()
+            )
+
+        self.flattener = nn.Flatten(2, 3)
+        self.apply(self.init_weight)
+    def _make_layer(self, block, inplanes, planes, blocks, stride=1, groups=1, norm_layer=None):
+        if norm_layer is None:
+            norm_layer = nn.BatchNorm2d
+        downsample = None
+        if stride != 1 or inplanes != planes * block.expansion:
+            downsample = nn.Sequential(
+                conv1x1(inplanes, planes * block.expansion, stride),
+                norm_layer(planes * block.expansion),
+            )
+
+            layers = []
+            layers.append(block(inplanes, planes, stride=stride, downsample=downsample, groups=groups, norm_layer=norm_layer))
+            inplanes = planes * block.expansion
+            for _ in range(1, blocks):
+                layers.append(block(inplanes, planes, groups=groups, norm_layer=norm_layer))
+
+            return nn.Sequential(*layers)
+    def sequence_length(self, n_channels=3, height=224, width=224):
+        return self.forward(torch.zeros((1, n_channels, height, width))).shape[1]
+    def forward(self, x):
+        return self.flattener(self.conv_layers(x)).transpose(-2, -1)
+    @staticmethod
+    def init_weight(m):
+        if isinstance(m, nn.Conv2d):
+            nn.init.kaiming_normal_(m.weight)
 class TextTokenizer(nn.Module):
     def __init__(self,
                  kernel_size, stride, padding,
