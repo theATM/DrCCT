@@ -39,7 +39,7 @@ from timm.data import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD, IMAGENET_INCE
     OPENAI_CLIP_MEAN, OPENAI_CLIP_STD
 from timm.layers import Mlp, DropPath, trunc_normal_, lecun_normal_, resample_patch_embed, \
     resample_abs_pos_embed, RmsNorm, PatchDropout, use_fused_attn
-from timm.layers.patch_embed_atm import PatchEmbed, Res2NetEmbed
+from timm.layers.patch_embed_atm import PatchEmbed, Res2NetEmbed, Res2NetEmbedTheSecond
 from ._builder import build_model_with_cfg
 from ._manipulate import named_apply, checkpoint_seq, adapt_input_conv
 from ._registry import generate_default_cfgs, register_model, register_model_deprecations
@@ -406,7 +406,7 @@ class VisionTransformer(nn.Module):
             attn_drop_rate: float = 0.,
             drop_path_rate: float = 0.,
             weight_init: str = '',
-            embed_layer: Callable = Res2NetEmbed,
+            embed_layer: Callable = Res2NetEmbedTheSecond,
             norm_layer: Optional[Callable] = None,
             act_layer: Optional[Callable] = None,
             block_fn: Callable = Block,
