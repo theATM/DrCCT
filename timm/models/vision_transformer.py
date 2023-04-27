@@ -409,6 +409,7 @@ class VisionTransformer(nn.Module):
             norm_layer: Optional[Callable] = None,
             act_layer: Optional[Callable] = None,
             block_fn: Callable = Block,
+            strict: bool = False
     ):
         """
         Args:
