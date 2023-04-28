@@ -189,19 +189,20 @@ class Res2NetEmbedTheSecond(PatchEmbed):
         super().__init__(img_size, patch_size, in_chans, embed_dim, norm_layer, flatten, output_fmt, bias)
         self.in_chans = in_chans
         self.embed_dim = embed_dim
-        self.inplanes = embed_dim // 4 # changes
+        self.inplanes = embed_dim // 32 # changes
         self.inplanes_first_layer = self.inplanes  # stays fixed
         self.input_filters = nn.Conv2d(self.in_chans, self.inplanes, kernel_size=(1, 1))
-        self.proj = self._make_layer(Res2NetBottleneck, embed_dim // 4, 1)
-        self.output_filters = nn.Conv2d(self.embed_dim, self.embed_dim, kernel_size=self.patch_size, stride=self.patch_size, bias=bias)
+        self.proj = self._make_layer(Res2NetBottleneck, self.inplanes, 1)
+        self.output_filters = nn.Conv2d(self.inplanes * 4, self.embed_dim, kernel_size=self.patch_size, stride=self.patch_size, bias=bias)
         self.norm = norm_layer(embed_dim) if norm_layer else nn.Identity()
+
     def forward(self, x):
         B, C, H, W = x.shape
         _assert(H == self.img_size[0], f"Input image height ({H}) doesn't match model ({self.img_size[0]}).")
         _assert(W == self.img_size[1], f"Input image width ({W}) doesn't match model ({self.img_size[1]}).")
-        x = self.input_filters(x)
-        x = self.proj(x)
-        x = self.output_filters(x)
+        x = self.input_filters(x)  # x - (batch, 3, 244, 244 )
+        x = self.proj(x)           # x - (batch, embed_dim // 4, 244, 244)
+        x = self.output_filters(x) # x - (batch, embed_dim, 244, 244), out - (batch, embed_dim, 14, 14)
         if self.flatten:
             x = x.flatten(2).transpose(1, 2)  # NCHW -> NLC
         elif self.output_fmt != Format.NCHW:
