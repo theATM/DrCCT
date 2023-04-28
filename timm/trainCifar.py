@@ -23,6 +23,7 @@ from contextlib import suppress
 from datetime import datetime
 from functools import partial
 
+import numpy as np
 import torch
 import torch.nn as nn
 import torchvision.utils
@@ -38,6 +39,9 @@ from timm.models import create_model, safe_model_name, resume_checkpoint, load_c
 from timm.optim import create_optimizer_v2, optimizer_kwargs
 from timm.scheduler import create_scheduler_v2, scheduler_kwargs
 from timm.utils import ApexScaler, NativeScaler
+
+
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:1024"
 
 try:
     from apex import amp
@@ -437,6 +441,8 @@ def main():
         strict = not args.non_strict,
         **args.model_kwargs,
     )
+    print(f'Model Parameters = {sum([np.prod(p.size()) for p in model.parameters()])}' )
+
     if args.num_classes is None:
         assert hasattr(model, 'num_classes'), 'Model must have `num_classes` attr if not set on cmd line/config.'
         args.num_classes = model.num_classes  # FIXME handle model default vs config num_classes more elegantly
