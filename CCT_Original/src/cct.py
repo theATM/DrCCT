@@ -233,6 +233,9 @@ def cct_2_hybrid(arch, pretrained, progress, *args, **kwargs):
     return _cct_hybrid(arch, pretrained, progress, num_layers=2, num_heads=2, mlp_ratio=1, embedding_dim=128,
                 *args, **kwargs)
 
+def cct_4_hybrid(arch, pretrained, progress, *args, **kwargs):
+    return _cct_hybrid(arch, pretrained, progress, num_layers=4, num_heads=2, mlp_ratio=1, embedding_dim=128,
+                *args, **kwargs)
 def cct_7_hybrid(arch, pretrained, progress, *args, **kwargs):
     return _cct_hybrid(arch, pretrained, progress, num_layers=7, num_heads=4, mlp_ratio=2, embedding_dim=256,
                 *args, **kwargs)
@@ -471,6 +474,16 @@ def cct_2_3x2_32_c100_hybrid(pretrained=False, progress=False,
                  img_size=32, positional_embedding='learnable', num_classes=100,
                  *args, **kwargs):
     return cct_2_hybrid('cct_2_3x2_32_hybrid', pretrained, progress,
+                 kernel_size=3, n_conv_layers=2,
+                 img_size=img_size, positional_embedding=positional_embedding,
+                 num_classes=num_classes,
+                 *args, **kwargs)
+
+@register_model
+def cct_4_3x2_32_c100_hybrid(pretrained=False, progress=False,
+                 img_size=32, positional_embedding='learnable', num_classes=100,
+                 *args, **kwargs):
+    return cct_4_hybrid('cct_4_3x2_32', pretrained, progress,
                  kernel_size=3, n_conv_layers=2,
                  img_size=img_size, positional_embedding=positional_embedding,
                  num_classes=num_classes,
