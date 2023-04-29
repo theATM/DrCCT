@@ -172,6 +172,60 @@ class Res2NetEmbed(PatchEmbed):
             layers.append(block(self.inplanes, planes, groups=groups, norm_layer=norm_layer))
 
         return nn.Sequential(*layers)
+
+class Res2NetEmbedTheSecond(PatchEmbed):
+    output_fmt: Format
+    def __init__(
+            self,
+            img_size: int = 224,
+            patch_size: int = 16,
+            in_chans: int = 3,
+            embed_dim: int = 768,
+            norm_layer: Optional[Callable] = None,
+            flatten: bool = True,
+            output_fmt: Optional[str] = None,
+            bias: bool = True,
+    ):
+        super().__init__(img_size, patch_size, in_chans, embed_dim, norm_layer, flatten, output_fmt, bias)
+        self.in_chans = in_chans
+        self.embed_dim = embed_dim
+        self.inplanes = embed_dim // 32 # changes
+        self.inplanes_first_layer = self.inplanes  # stays fixed
+        self.input_filters = nn.Conv2d(self.in_chans, self.inplanes, kernel_size=(1, 1))
+        self.proj = self._make_layer(Res2NetBottleneck, self.inplanes, 1)
+        self.output_filters = nn.Conv2d(self.inplanes * 4, self.embed_dim, kernel_size=self.patch_size, stride=self.patch_size, bias=bias)
+        self.norm = norm_layer(embed_dim) if norm_layer else nn.Identity()
+
+    def forward(self, x):
+        B, C, H, W = x.shape
+        _assert(H == self.img_size[0], f"Input image height ({H}) doesn't match model ({self.img_size[0]}).")
+        _assert(W == self.img_size[1], f"Input image width ({W}) doesn't match model ({self.img_size[1]}).")
+        x = self.input_filters(x)  # x - (batch, 3, 244, 244 )
+        x = self.proj(x)           # x - (batch, embed_dim // 4, 244, 244)
+        x = self.output_filters(x) # x - (batch, embed_dim, 244, 244), out - (batch, embed_dim, 14, 14)
+        if self.flatten:
+            x = x.flatten(2).transpose(1, 2)  # NCHW -> NLC
+        elif self.output_fmt != Format.NCHW:
+            x = nchw_to(x, self.output_fmt)
+        x = self.norm(x)
+        return x
+    def _make_layer(self, block, planes, blocks, stride=1, groups=1, norm_layer=None):
+        if norm_layer is None:
+            norm_layer = nn.BatchNorm2d
+        downsample = None
+        if stride != 1 or self.inplanes != planes * block.expansion:
+            downsample = nn.Sequential(
+                conv1x1(self.inplanes, planes * block.expansion, stride),
+                norm_layer(planes * block.expansion),
+            )
+
+        layers = []
+        layers.append(block(self.inplanes, planes, stride=stride, downsample=downsample, groups=groups, norm_layer=norm_layer))
+        #self.inplanes = planes * block.expansion
+        for _ in range(1, blocks):
+            layers.append(block(self.inplanes, planes, groups=groups, norm_layer=norm_layer))
+
+        return nn.Sequential(*layers)
 def resample_patch_embed(
         patch_embed,
         new_size: List[int],
