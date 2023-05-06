@@ -851,6 +851,7 @@ def main():
         args,
         amp_autocast=amp_autocast,
     )
+    _logger.info('*** Last Validation Results: Loss {0} Acc@1 {1} Acc@5 {2}'.format(eval_metrics['loss'],eval_metrics['top1'],eval_metrics['top5']))
 
 def train_one_epoch(
         epoch,
