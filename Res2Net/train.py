@@ -202,7 +202,7 @@ def main():
 
         tmp = pd.Series([
             epoch,
-            scheduler.get_lr()[0],
+            scheduler.get_last_lr()[0],
             train_log['loss'],
             train_log['acc1'],
             train_log['acc5'],
