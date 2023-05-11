@@ -366,7 +366,7 @@ def cct_7_3x1_32_c100_fair(pretrained=False, progress=False,
                       img_size=32, positional_embedding='learnable', num_classes=100,
                       *args, **kwargs):
     return cct_7('cct_7_3x1_32_c100', pretrained, progress,
-                 kernel_size=3, n_conv_layers=5,
+                 kernel_size=4, n_conv_layers=2,
                  img_size=img_size, positional_embedding=positional_embedding,
                  num_classes=num_classes,
                  *args, **kwargs)
