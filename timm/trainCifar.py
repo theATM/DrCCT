@@ -28,6 +28,7 @@ import torch
 import torch.nn as nn
 import torchvision.utils
 import yaml
+import time
 from matplotlib import pyplot as plt
 from torch.nn.parallel import DistributedDataParallel as NativeDDP
 
@@ -72,7 +73,7 @@ except ImportError as e:
 
 has_compile = hasattr(torch, 'compile')
 
-
+timer = time.perf_counter()
 _logger = logging.getLogger('train')
 
 # The first arg parser parses out only the --config argument, this argument is used to
@@ -852,6 +853,7 @@ def main():
         amp_autocast=amp_autocast,
     )
     _logger.info('*** Last Validation Results: Loss {0} Acc@1 {1} Acc@5 {2}'.format(eval_metrics['loss'],eval_metrics['top1'],eval_metrics['top5']))
+    _logger.info('Time spend {0}'.format(time.strftime('%H:%M:%S',time.perf_counter() - timer)))
 
 def train_one_epoch(
         epoch,
@@ -879,6 +881,8 @@ def train_one_epoch(
     batch_time_m = utils.AverageMeter()
     data_time_m = utils.AverageMeter()
     losses_m = utils.AverageMeter()
+    top1_m = utils.AverageMeter()
+    top5_m = utils.AverageMeter()
 
     model.train()
 
@@ -901,9 +905,14 @@ def train_one_epoch(
         with amp_autocast():
             output = model(input)
             loss = loss_fn(output, target)
+        if len(target.shape) != 1:
+            target = target.argmax(axis=1)
+        acc1, acc5 = utils.accuracy(output, target, topk=(1, 5))
 
         if not args.distributed:
             losses_m.update(loss.item(), input.size(0))
+            top1_m.update(acc1.item(), output.size(0))
+            top5_m.update(acc5.item(), output.size(0))
 
         optimizer.zero_grad()
         if loss_scaler is not None:
@@ -937,12 +946,19 @@ def train_one_epoch(
 
             if args.distributed:
                 reduced_loss = utils.reduce_tensor(loss.data, args.world_size)
+                acc1 = utils.reduce_tensor(acc1, args.world_size)
+                acc5 = utils.reduce_tensor(acc5, args.world_size)
+
                 losses_m.update(reduced_loss.item(), input.size(0))
+                top1_m.update(acc1.item(), output.size(0))
+                top5_m.update(acc5.item(), output.size(0))
 
             if utils.is_primary(args):
                 _logger.info(
                     'Train: {} [{:>4d}/{} ({:>3.0f}%)]  '
                     'Loss: {loss.val:#.4g} ({loss.avg:#.3g})  '
+                    'Acc@1: {top1.val:>7.4f} ({top1.avg:>7.4f}) '
+                    'Acc@5: {top5.val:>7.4f} ({top5.avg:>7.4f}) '
                     'Time: {batch_time.val:.3f}s, {rate:>7.2f}/s  '
                     '({batch_time.avg:.3f}s, {rate_avg:>7.2f}/s)  '
                     'LR: {lr:.3e}  '
@@ -951,6 +967,8 @@ def train_one_epoch(
                         batch_idx, len(loader),
                         100. * batch_idx / last_idx,
                         loss=losses_m,
+                        top1=top1_m,
+                        top5 = top5_m,
                         batch_time=batch_time_m,
                         rate=input.size(0) * args.world_size / batch_time_m.val,
                         rate_avg=input.size(0) * args.world_size / batch_time_m.avg,
@@ -979,7 +997,7 @@ def train_one_epoch(
     if hasattr(optimizer, 'sync_lookahead'):
         optimizer.sync_lookahead()
 
-    return OrderedDict([('loss', losses_m.avg)])
+    return OrderedDict([('loss', losses_m.avg), ('top1', top1_m.avg), ('top5', top5_m.avg)])
 
 
 def validate(
