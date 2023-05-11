@@ -847,6 +847,8 @@ def main():
         if best_metric is not None:
             _logger.info('*** Best metric: {0} (epoch {1})'.format(best_metric, best_epoch))
 
+    _logger.info('Training Time spend {0}'.format(str(timedelta(seconds=int(time.perf_counter() - timer)))))
+
     eval_metrics = validate(
         model,
         loader_eval,
@@ -855,7 +857,6 @@ def main():
         amp_autocast=amp_autocast,
     )
     _logger.info('*** Last Validation Results: Loss {0} Acc@1 {1} Acc@5 {2}'.format(eval_metrics['loss'],eval_metrics['top1'],eval_metrics['top5']))
-    _logger.info('Time spend {0}'.format(str(timedelta(seconds=int(time.perf_counter() - timer)))))
 
 def train_one_epoch(
         epoch,
