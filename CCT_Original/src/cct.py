@@ -225,7 +225,7 @@ def cct_7(arch, pretrained, progress, *args, **kwargs):
                 *args, **kwargs)
 
 def cct_7_fair(arch, pretrained, progress, *args, **kwargs):
-    return _cct(arch, pretrained, progress, num_layers=7, num_heads=4, mlp_ratio=2, embedding_dim=263,
+    return _cct(arch, pretrained, progress, num_layers=7, num_heads=4, mlp_ratio=2, embedding_dim=264,
                 *args, **kwargs)
 
 
