@@ -4,7 +4,7 @@ Hacked together by / Copyright 2021, Ross Wightman
 """
 import os
 
-from torchvision.datasets import CIFAR100, CIFAR10, MNIST, KMNIST, FashionMNIST, ImageFolder
+from torchvision.datasets import CIFAR100, CIFAR10, MNIST, KMNIST, FashionMNIST, Flowers102, ImageFolder
 try:
     from torchvision.datasets import Places365
     has_places365 = True
@@ -34,6 +34,7 @@ _TORCH_BASIC_DS = dict(
     mnist=MNIST,
     kmnist=KMNIST,
     fashion_mnist=FashionMNIST,
+    flowers102 = Flowers102
 )
 _TRAIN_SYNONYM = dict(train=None, training=None)
 _EVAL_SYNONYM = dict(val=None, valid=None, validation=None, eval=None, evaluation=None)
@@ -109,7 +110,10 @@ def create_dataset(
         if name in _TORCH_BASIC_DS:
             ds_class = _TORCH_BASIC_DS[name]
             use_train = split in _TRAIN_SYNONYM
-            ds = ds_class(train=use_train, **torch_kwargs)
+            if name == 'flowers102':
+                ds = ds_class(split=split, **torch_kwargs)
+            else:
+                ds = ds_class(train=use_train, **torch_kwargs)
         elif name == 'inaturalist' or name == 'inat':
             assert has_inaturalist, 'Please update to PyTorch 1.10, torchvision 0.11+ for Inaturalist'
             target_type = 'full'
