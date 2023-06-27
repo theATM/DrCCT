@@ -224,6 +224,11 @@ def cct_7(arch, pretrained, progress, *args, **kwargs):
     return _cct(arch, pretrained, progress, num_layers=7, num_heads=4, mlp_ratio=2, embedding_dim=256,
                 *args, **kwargs)
 
+def cct_7_fair(arch, pretrained, progress, *args, **kwargs):
+    return _cct(arch, pretrained, progress, num_layers=7, num_heads=4, mlp_ratio=2, embedding_dim=264,
+                *args, **kwargs)
+
+
 
 def cct_14(arch, pretrained, progress, *args, **kwargs):
     return _cct(arch, pretrained, progress, num_layers=14, num_heads=6, mlp_ratio=3, embedding_dim=384,
@@ -356,6 +361,16 @@ def cct_7_3x1_32_c100(pretrained=False, progress=False,
                       img_size=32, positional_embedding='learnable', num_classes=100,
                       *args, **kwargs):
     return cct_7('cct_7_3x1_32_c100', pretrained, progress,
+                 kernel_size=3, n_conv_layers=1,
+                 img_size=img_size, positional_embedding=positional_embedding,
+                 num_classes=num_classes,
+                 *args, **kwargs)
+
+@register_model
+def cct_7_3x1_32_c100_fair(pretrained=False, progress=False,
+                      img_size=32, positional_embedding='learnable', num_classes=100,
+                      *args, **kwargs):
+    return cct_7_fair('cct_7_3x1_32_c100', pretrained, progress,
                  kernel_size=3, n_conv_layers=1,
                  img_size=img_size, positional_embedding=positional_embedding,
                  num_classes=num_classes,

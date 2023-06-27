@@ -21,6 +21,7 @@ import time
 from collections import OrderedDict
 from contextlib import suppress
 from datetime import datetime
+from datetime import timedelta
 from functools import partial
 
 import numpy as np
@@ -28,6 +29,7 @@ import torch
 import torch.nn as nn
 import torchvision.utils
 import yaml
+import time
 from matplotlib import pyplot as plt
 from torch.nn.parallel import DistributedDataParallel as NativeDDP
 
@@ -72,7 +74,7 @@ except ImportError as e:
 
 has_compile = hasattr(torch, 'compile')
 
-
+timer = time.perf_counter()
 _logger = logging.getLogger('train')
 
 # The first arg parser parses out only the --config argument, this argument is used to
@@ -221,8 +223,8 @@ group.add_argument('--epoch-repeats', type=float, default=0., metavar='N',
                    help='epoch repeat multiplier (number of times to repeat dataset epoch per train epoch).')
 group.add_argument('--start-epoch', default=None, type=int, metavar='N',
                    help='manual epoch number (useful on restarts)')
-group.add_argument('--decay-milestones', default=[90, 180, 270], type=int, nargs='+', metavar="MILESTONES",
-                   help='list of decay epoch indices for multistep lr. must be increasing')
+group.add_argument('--decay-milestones', '-dm', default=[90, 180, 270], type=int, nargs='+', metavar="MILESTONES",
+                   help='list of decay epoch indices for multistep lr. must be increasing Use like this : --decay-milestones 90 180 270')
 group.add_argument('--decay-epochs', type=float, default=90, metavar='N',
                    help='epoch interval to decay LR')
 group.add_argument('--warmup-epochs', type=int, default=5, metavar='N',
@@ -801,6 +803,7 @@ def main():
                     validate_loss_fn,
                     args,
                     amp_autocast=amp_autocast,
+                    log_suffix=f' {epoch}'
                 )
 
                 if model_ema is not None and not args.model_ema_force_cpu:
@@ -844,6 +847,8 @@ def main():
         if best_metric is not None:
             _logger.info('*** Best metric: {0} (epoch {1})'.format(best_metric, best_epoch))
 
+    _logger.info('Training Time spend {0}'.format(str(timedelta(seconds=int(time.perf_counter() - timer)))))
+
     eval_metrics = validate(
         model,
         loader_eval,
@@ -879,10 +884,13 @@ def train_one_epoch(
     batch_time_m = utils.AverageMeter()
     data_time_m = utils.AverageMeter()
     losses_m = utils.AverageMeter()
+    top1_m = utils.AverageMeter()
+    top5_m = utils.AverageMeter()
 
     model.train()
 
     end = time.time()
+    start_time = time.perf_counter()
     num_batches_per_epoch = len(loader)
     last_idx = num_batches_per_epoch - 1
     num_updates = epoch * num_batches_per_epoch
@@ -901,9 +909,14 @@ def train_one_epoch(
         with amp_autocast():
             output = model(input)
             loss = loss_fn(output, target)
+        if len(target.shape) != 1:
+            target = target.argmax(axis=1)
+        acc1, acc5 = utils.accuracy(output, target, topk=(1, 5))
 
         if not args.distributed:
             losses_m.update(loss.item(), input.size(0))
+            top1_m.update(acc1.item(), output.size(0))
+            top5_m.update(acc5.item(), output.size(0))
 
         optimizer.zero_grad()
         if loss_scaler is not None:
@@ -937,12 +950,19 @@ def train_one_epoch(
 
             if args.distributed:
                 reduced_loss = utils.reduce_tensor(loss.data, args.world_size)
+                acc1 = utils.reduce_tensor(acc1, args.world_size)
+                acc5 = utils.reduce_tensor(acc5, args.world_size)
+
                 losses_m.update(reduced_loss.item(), input.size(0))
+                top1_m.update(acc1.item(), output.size(0))
+                top5_m.update(acc5.item(), output.size(0))
 
             if utils.is_primary(args):
                 _logger.info(
                     'Train: {} [{:>4d}/{} ({:>3.0f}%)]  '
                     'Loss: {loss.val:#.4g} ({loss.avg:#.3g})  '
+                    'Acc@1: {top1.val:>7.4f} ({top1.avg:>7.4f}) '
+                    'Acc@5: {top5.val:>7.4f} ({top5.avg:>7.4f}) '
                     'Time: {batch_time.val:.3f}s, {rate:>7.2f}/s  '
                     '({batch_time.avg:.3f}s, {rate_avg:>7.2f}/s)  '
                     'LR: {lr:.3e}  '
@@ -951,6 +971,8 @@ def train_one_epoch(
                         batch_idx, len(loader),
                         100. * batch_idx / last_idx,
                         loss=losses_m,
+                        top1=top1_m,
+                        top5=top5_m,
                         batch_time=batch_time_m,
                         rate=input.size(0) * args.world_size / batch_time_m.val,
                         rate_avg=input.size(0) * args.world_size / batch_time_m.avg,
@@ -979,7 +1001,9 @@ def train_one_epoch(
     if hasattr(optimizer, 'sync_lookahead'):
         optimizer.sync_lookahead()
 
-    return OrderedDict([('loss', losses_m.avg)])
+    _logger.info('Train {} Avg: Loss {loss.avg:#.3g} Acc@1 {top1.avg:>7.4f} Acc@5 {top5.avg:>7.4f} Time {time}'.format(epoch, loss=losses_m, top1=top1_m, top5=top5_m, time=str(timedelta(seconds=time.perf_counter() - start_time))))
+    return OrderedDict([('loss', losses_m.avg), ('top1', top1_m.avg), ('top5', top5_m.avg)])
+
 
 
 def validate(
@@ -1055,7 +1079,7 @@ def validate(
                 )
 
     metrics = OrderedDict([('loss', losses_m.avg), ('top1', top1_m.avg), ('top5', top5_m.avg)])
-
+    _logger.info('{0} Avg: Loss {1} Acc@1 {2} Acc@5 {3}'.format(log_name, metrics['loss'], metrics['top1'], metrics['top5']))
     return metrics
 
 
