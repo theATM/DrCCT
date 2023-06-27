@@ -1,7 +1,7 @@
 # DrCCT
 A hybrid CCT transformer with Res2Net module
 
-Uses two projects:
+Uses as a base two projects:
 
 Timm Liblary with ViT implementation
 
