@@ -5,6 +5,7 @@ models/*
 pretrained/*
 *.jpg
 *.png
+data*
 
 timm/output/*
 Res2Net/models/*
