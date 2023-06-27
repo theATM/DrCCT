@@ -2,7 +2,7 @@ dataset: flowers102
 num_classes: 102
 img_size: 224
 train_split: train
-val_split: valid
+val_split: val
 mean:
     - 0.4353
     - 0.3773
