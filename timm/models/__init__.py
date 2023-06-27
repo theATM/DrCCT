@@ -2,6 +2,7 @@ from .beit import *
 from .byoanet import *
 from .byobnet import *
 from .cait import *
+from CCT_Original.src.cct import *
 from .coat import *
 from .convit import *
 from .convmixer import *
@@ -38,6 +39,7 @@ from .nest import *
 from .nfnet import *
 from .pit import *
 from .pnasnet import *
+from .poolformer import *
 from .pvt_v2 import *
 from .regnet import *
 from .res2net import *
@@ -61,6 +63,7 @@ from .vision_transformer import *
 from .vision_transformer_hybrid import *
 from .vision_transformer_relpos import *
 from .vision_transformer_sam import *
+from .vision_transformer_atm import *
 from .volo import *
 from .vovnet import *
 from .xception import *

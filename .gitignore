@@ -1,0 +1,36 @@
+# IDE
+.idea/*
+data/*
+models/*
+pretrained/*
+*.jpg
+*.png
+
+timm/output/*
+Res2Net/models/*
+
+
+# Generated:
+*.so
+.Python
+build/
+.ipynb_checkpoints
+profile_default/
+ipython_config.py
+.python-version
+__pycache__/
+*.py[cod]
+*$py.class
+
+
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+*.csv
+*.pdf

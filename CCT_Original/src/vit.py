@@ -192,3 +192,13 @@ def vit_7_4_32_sine(pretrained=False, progress=False,
                  img_size=img_size, positional_embedding=positional_embedding,
                  num_classes=num_classes,
                  *args, **kwargs)
+
+@register_model
+def vit_7_4_32_c100(pretrained=False, progress=False,
+               img_size=32, positional_embedding='learnable', num_classes=100,
+               *args, **kwargs):
+    return vit_7('vit_7_4_32', pretrained, progress,
+                 kernel_size=4,
+                 img_size=img_size, positional_embedding=positional_embedding,
+                 num_classes=num_classes,
+                 *args, **kwargs)

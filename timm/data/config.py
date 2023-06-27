@@ -91,7 +91,7 @@ def resolve_data_config(
     data_config['crop_mode'] = crop_mode
 
     if verbose:
-        _logger.info('Data processing configuration for current model + dataset:')
+        _logger.info('data processing configuration for current model + dataset:')
         for n, v in data_config.items():
             _logger.info('\t%s: %s' % (n, str(v)))
 

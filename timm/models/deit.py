@@ -1,8 +1,8 @@
-""" DeiT - Data-efficient Image Transformers
+""" DeiT - data-efficient Image Transformers
 
 DeiT model defs and weights from https://github.com/facebookresearch/deit, original copyright below
 
-paper: `DeiT: Data-efficient Image Transformers` - https://arxiv.org/abs/2012.12877
+paper: `DeiT: data-efficient Image Transformers` - https://arxiv.org/abs/2012.12877
 
 paper: `DeiT III: Revenge of the ViT` - https://arxiv.org/abs/2204.07118
 
@@ -29,7 +29,7 @@ __all__ = ['VisionTransformerDistilled']  # model_registry will add each entrypo
 class VisionTransformerDistilled(VisionTransformer):
     """ Vision Transformer w/ Distillation Token and Head
 
-    Distillation token & head support for `DeiT: Data-efficient Image Transformers`
+    Distillation token & head support for `DeiT: data-efficient Image Transformers`
         - https://arxiv.org/abs/2012.12877
     """
 
