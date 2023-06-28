@@ -475,6 +475,17 @@ def cct_7_3x1_32_c100_hybrid(pretrained=False, progress=False,
                  *args, **kwargs)
 
 @register_model
+def cct_7_3x1_32_c100_hybrid_flowers(pretrained=False, progress=False,
+                      img_size=224, positional_embedding='learnable', num_classes=102,
+                      *args, **kwargs):
+    # TODO : need to change the Res2Net tokenizer to fit the 244x244 images (and propably increase the network from 7_3 to 14_7)
+    return cct_7_hybrid('cct_7_3x1_32_c100', pretrained, progress,
+                 kernel_size=3, n_conv_layers=1,
+                 img_size=img_size, positional_embedding=positional_embedding,
+                 num_classes=num_classes,
+                 *args, **kwargs)
+
+@register_model
 def cct_2_3x2_32_c100(pretrained=False, progress=False,
                  img_size=32, positional_embedding='learnable', num_classes=100,
                  *args, **kwargs):
