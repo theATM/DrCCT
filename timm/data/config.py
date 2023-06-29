@@ -91,7 +91,7 @@ def resolve_data_config(
     data_config['crop_mode'] = crop_mode
 
     if verbose:
-        _logger.info('Data processing configuration for current model + dataset:')
+        _logger.info('data processing configuration for current model + dataset:')
         for n, v in data_config.items():
             _logger.info('\t%s: %s' % (n, str(v)))
 
@@ -105,7 +105,7 @@ def resolve_model_data_config(
         use_test_size=False,
         verbose=False,
 ):
-    """ Resolve Model Data Config
+    """ Resolve Model data Config
     This is equivalent to resolve_data_config() but with arguments re-ordered to put model first.
 
     Args:

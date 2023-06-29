@@ -111,6 +111,7 @@ def resume_checkpoint(
         optimizer: torch.optim.Optimizer = None,
         loss_scaler: Any = None,
         log_info: bool = True,
+        strict_load: bool = True
 ):
     resume_epoch = None
     if os.path.isfile(checkpoint_path):
@@ -119,7 +120,10 @@ def resume_checkpoint(
             if log_info:
                 _logger.info('Restoring model state from checkpoint...')
             state_dict = clean_state_dict(checkpoint['state_dict'])
-            model.load_state_dict(state_dict)
+            if strict_load is False:
+                chaff_removal(checkpoint,model.state_dict())
+
+            model.load_state_dict(state_dict,strict_load)
 
             if optimizer is not None and 'optimizer' in checkpoint:
                 if log_info:
@@ -139,12 +143,30 @@ def resume_checkpoint(
             if log_info:
                 _logger.info("Loaded checkpoint '{}' (epoch {})".format(checkpoint_path, checkpoint['epoch']))
         else:
-            model.load_state_dict(checkpoint)
+            if strict_load is False:
+                chaff_removal(checkpoint,model.state_dict())
+
+            model.load_state_dict(checkpoint,strict=strict_load)
             if log_info:
                 _logger.info("Loaded checkpoint '{}'".format(checkpoint_path))
         return resume_epoch
     else:
         _logger.error("No checkpoint found at '{}'".format(checkpoint_path))
         raise FileNotFoundError()
+
+
+
+def chaff_removal(checkpoint,model_dict):
+    # Remove weights with incompatible shapes
+    remove_keys = []
+    for key in checkpoint.keys():
+        if key in model_dict and checkpoint[key].shape != model_dict[key].shape:
+            _logger.info(f"Removing {key} layer from checkpoint because of the size mismatch "
+                         f"[{checkpoint[key].shape[0]},{checkpoint[key].shape[1] if len(checkpoint[key].shape) == 2 else ''}] != "
+                         f"[{model_dict[key].shape[0]},{model_dict[key].shape[1] if len(model_dict[key].shape) == 2 else ''}]")
+            remove_keys.append(key)
+
+    for key in remove_keys:
+        checkpoint.pop(key)
 
 

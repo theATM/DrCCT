@@ -1,11 +1,11 @@
-""" Vision Transformer (ViT) in PyTorch
+""" Vision Transformer (ViT) in PyTorch - Copy for edition
 
 A PyTorch implement of Vision Transformers as described in:
 
 'An Image Is Worth 16 x 16 Words: Transformers for Image Recognition at Scale'
     - https://arxiv.org/abs/2010.11929
 
-`How to train your ViT? Data, Augmentation, and Regularization in Vision Transformers`
+`How to train your ViT? data, Augmentation, and Regularization in Vision Transformers`
     - https://arxiv.org/abs/2106.10270
 
 `FlexiViT: One Model for All Patch Sizes`
@@ -409,7 +409,6 @@ class VisionTransformer(nn.Module):
             norm_layer: Optional[Callable] = None,
             act_layer: Optional[Callable] = None,
             block_fn: Callable = Block,
-            strict: bool = False
     ):
         """
         Args:

@@ -2,6 +2,7 @@ from .beit import *
 from .byoanet import *
 from .byobnet import *
 from .cait import *
+from CCT_Original.src.cct import *
 from .coat import *
 from .convit import *
 from .convmixer import *
@@ -59,6 +60,7 @@ from .twins import *
 from .vgg import *
 from .visformer import *
 from .vision_transformer import *
+from .vision_transformer_atm import *
 from .vision_transformer_hybrid import *
 from .vision_transformer_relpos import *
 from .volo import *
