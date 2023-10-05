@@ -32,6 +32,7 @@ import yaml
 import time
 from matplotlib import pyplot as plt
 from torch.nn.parallel import DistributedDataParallel as NativeDDP
+from torchinfo import summary
 
 from timm import utils
 from timm.data import create_dataset, create_loader, resolve_data_config, Mixup, FastCollateMixup, AugMixDataset
@@ -382,6 +383,7 @@ def _parse_args():
 
 
 def main():
+    print([torch.cuda.get_device_name(i) for i in range(torch.cuda.device_count())])
     utils.setup_default_logging()
     args, args_text = _parse_args()
 
@@ -444,7 +446,8 @@ def main():
         **args.model_kwargs,
     )
     print(f'Model Parameters = {sum([np.prod(p.size()) for p in model.parameters()])}' )
-
+    print(model)
+    summary(model,input_size=(args.batch_size, 3, args.img_size,args.img_size))
     if args.num_classes is None:
         assert hasattr(model, 'num_classes'), 'Model must have `num_classes` attr if not set on cmd line/config.'
         args.num_classes = model.num_classes  # FIXME handle model default vs config num_classes more elegantly

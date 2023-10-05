@@ -1,0 +1,13 @@
+FROM rocm/pytorch:rocm5.6_ubuntu20.04_py3.8_pytorch_1.12.1
+
+WORKDIR /project
+
+COPY docker_requirements.txt /project/docker_requirements.txt
+
+RUN python --version
+
+RUN which python
+
+RUN python -m pip install -r /project/docker_requirements.txt
+
+RUN echo "Done"

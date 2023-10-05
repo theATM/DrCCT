@@ -36,6 +36,7 @@ class CCT(nn.Module):
                  embedding_dim=768,
                  n_input_channels=3,
                  n_conv_layers=1,
+                 in_planes=64,
                  kernel_size=7,
                  stride=2,
                  padding=3,
@@ -62,6 +63,7 @@ class CCT(nn.Module):
                                    pooling_stride=pooling_stride,
                                    pooling_padding=pooling_padding,
                                    max_pool=True,
+                                   in_planes=in_planes,
                                    activation=nn.ReLU,
                                    n_conv_layers=n_conv_layers,
                                    conv_bias=False)
@@ -92,6 +94,7 @@ class CCT_Hybrid(nn.Module):
                  embedding_dim=768,
                  n_input_channels=3,
                  n_conv_layers=1,
+                 in_planes=64,
                  kernel_size=7,
                  stride=2,
                  padding=3,
@@ -118,6 +121,7 @@ class CCT_Hybrid(nn.Module):
                                    pooling_stride=pooling_stride,
                                    pooling_padding=pooling_padding,
                                    max_pool=True,
+                                   in_planes=in_planes, #int(embedding_dim/4),#64
                                    activation=nn.ReLU,
                                    n_conv_layers=n_conv_layers,
                                    conv_bias=False)
@@ -140,10 +144,11 @@ class CCT_Hybrid(nn.Module):
 
     def forward(self, x):
         x = self.tokenizer(x)
-        return self.classifier(x)
+        x = self.classifier(x)
+        return x
 
 def _cct(arch, pretrained, progress,
-         num_layers, num_heads, mlp_ratio, embedding_dim,
+         num_layers, num_heads, mlp_ratio, embedding_dim, in_planes=64,
          kernel_size=3, stride=None, padding=None,
          positional_embedding='learnable',
          *args, **kwargs):
@@ -154,6 +159,7 @@ def _cct(arch, pretrained, progress,
                 mlp_ratio=mlp_ratio,
                 embedding_dim=embedding_dim,
                 kernel_size=kernel_size,
+                in_planes=in_planes,
                 stride=stride,
                 padding=padding,
                 *args, **kwargs)
@@ -173,7 +179,7 @@ def _cct(arch, pretrained, progress,
     return model
 
 def _cct_hybrid(arch, pretrained, progress,
-         num_layers, num_heads, mlp_ratio, embedding_dim,
+         num_layers, num_heads, mlp_ratio, embedding_dim, in_planes=64,
          kernel_size=3, stride=None, padding=None,
          positional_embedding='learnable',
          *args, **kwargs):
@@ -184,6 +190,7 @@ def _cct_hybrid(arch, pretrained, progress,
                 mlp_ratio=mlp_ratio,
                 embedding_dim=embedding_dim,
                 kernel_size=kernel_size,
+                in_planes=in_planes,
                 stride=stride,
                 padding=padding,
                 *args, **kwargs)
@@ -230,8 +237,12 @@ def cct_7_fair(arch, pretrained, progress, *args, **kwargs):
 
 
 
-def cct_14(arch, pretrained, progress, *args, **kwargs):
-    return _cct(arch, pretrained, progress, num_layers=14, num_heads=6, mlp_ratio=3, embedding_dim=384,
+def cct_14(arch, pretrained, progress, embedding_dim=384, in_planes=64, *args, **kwargs):
+    return _cct(arch, pretrained, progress, num_layers=14, num_heads=6, mlp_ratio=3, embedding_dim=embedding_dim, in_planes=in_planes,
+                *args, **kwargs)
+
+def cct_14_hybrid(arch, pretrained, progress, embedding_dim=384, in_planes=64, *args, **kwargs):
+    return _cct_hybrid(arch, pretrained, progress, num_layers=14, num_heads=6, mlp_ratio=3, embedding_dim=embedding_dim, in_planes=in_planes,
                 *args, **kwargs)
 
 def cct_2_hybrid(arch, pretrained, progress, *args, **kwargs):
@@ -241,9 +252,161 @@ def cct_2_hybrid(arch, pretrained, progress, *args, **kwargs):
 def cct_4_hybrid(arch, pretrained, progress, *args, **kwargs):
     return _cct_hybrid(arch, pretrained, progress, num_layers=4, num_heads=2, mlp_ratio=1, embedding_dim=128,
                 *args, **kwargs)
-def cct_7_hybrid(arch, pretrained, progress, *args, **kwargs):
-    return _cct_hybrid(arch, pretrained, progress, num_layers=7, num_heads=4, mlp_ratio=2, embedding_dim=256,
+def cct_7_hybrid(arch, pretrained, progress, embedding_dim=256, in_planes=64, *args, **kwargs):
+    return _cct_hybrid(arch, pretrained, progress, num_layers=7, num_heads=4, mlp_ratio=2, embedding_dim=embedding_dim, in_planes=in_planes,
                 *args, **kwargs)
+
+#############################################################################3
+
+# Cifar100 CCT7 models:
+@register_model # Normal - cct7
+def cct_7_3x1_32_c100(pretrained=False, progress=False,
+                      img_size=32, positional_embedding='learnable', num_classes=100,
+                      *args, **kwargs):
+    return cct_7('cct_7_3x1_32_c100', pretrained, progress,
+                 kernel_size=3, n_conv_layers=1,
+                 img_size=img_size, positional_embedding=positional_embedding,
+                 num_classes=num_classes,
+                 *args, **kwargs)
+
+@register_model # Fair - cct7
+def cct_7_3x1_32_c100_fair(pretrained=False, progress=False,
+                      img_size=32, positional_embedding='learnable', num_classes=100,
+                      *args, **kwargs):
+    return cct_7_fair('cct_7_3x1_32_c100', pretrained, progress,
+                 kernel_size=3, n_conv_layers=1,
+                 img_size=img_size, positional_embedding=positional_embedding,
+                 num_classes=num_classes,
+                 *args, **kwargs)
+
+@register_model # Hybrid - cct7
+def cct_7_3x1_32_c100_hybrid(pretrained=False, progress=False,
+                      img_size=32, positional_embedding='learnable', num_classes=100,
+                      *args, **kwargs):
+    return cct_7_hybrid('cct_7_3x1_32_c100', pretrained, progress,
+                 kernel_size=3, n_conv_layers=1,
+                 img_size=img_size, positional_embedding=positional_embedding,
+                 num_classes=num_classes,
+                 *args, **kwargs)
+
+# Cifar100 CCT14 models:
+
+@register_model # our clean
+def cct_14_7x2_32(pretrained=False, progress=False,
+                   img_size=32, positional_embedding='learnable', num_classes=100,
+                   *args, **kwargs):
+    return cct_14('cct_14_7x2_32', pretrained, progress,
+                  kernel_size=7, n_conv_layers=2,
+                  img_size=img_size, positional_embedding=positional_embedding,
+                  num_classes=num_classes,
+                  *args, **kwargs)
+@register_model # our hybrid
+def cct_14_7x2_32_hybrid(pretrained=False, progress=False,
+                   img_size=32, positional_embedding='learnable', num_classes=100,
+                   *args, **kwargs):
+    return cct_14_hybrid('cct_14_7x2_32_hybrid', pretrained, progress,
+                  kernel_size=7, n_conv_layers=2,
+                  img_size=img_size, positional_embedding=positional_embedding, embedding_dim=384, in_planes=64,
+                  num_classes=num_classes,
+                  *args, **kwargs)
+
+
+##############################
+# Flowers models:
+
+@register_model
+def cct_14_7x2_384_fl(pretrained=True, progress=False,
+                      img_size=384, positional_embedding='learnable', num_classes=102,
+                      *args, **kwargs):
+    return cct_14('cct_14_7x2_384_fl', pretrained, progress,
+                  kernel_size=7, n_conv_layers=2,
+                  img_size=img_size, positional_embedding=positional_embedding, embedding_dim=384, in_planes=64,
+                  num_classes=num_classes,
+                  *args, **kwargs)
+
+@register_model
+def cct_14_7x2_384_hybrid_fl(pretrained=True, progress=False,
+                      img_size=384, positional_embedding='learnable', num_classes=102,
+                      *args, **kwargs):
+    return cct_14_hybrid('cct_14_7x2_384_fl', pretrained, progress,
+                  kernel_size=7, n_conv_layers=2,
+                  img_size=img_size, positional_embedding=positional_embedding, embedding_dim=384 , in_planes=64,
+                  num_classes=num_classes,
+                  *args, **kwargs)
+
+@register_model # Normal - cct7 flowers
+def cct_7_3x1_32_fl(pretrained=False, progress=False,
+                      img_size=224, positional_embedding='learnable', num_classes=102,
+                      *args, **kwargs):
+    return cct_7('cct_7_3x1_32_fl', pretrained, progress,
+                 kernel_size=3, n_conv_layers=1,
+                 img_size=img_size, positional_embedding=positional_embedding,
+                 num_classes=num_classes,
+                 *args, **kwargs)
+@register_model # Hybrid - cct7 flowers
+def cct_7_3x1_32_hybrid_fl(pretrained=False, progress=False,
+                      img_size=224, positional_embedding='learnable', num_classes=102,
+                      *args, **kwargs):
+    return cct_7_hybrid('cct_7_3x1_32_hybrid_fl', pretrained, progress,
+                 kernel_size=3, n_conv_layers=1,
+                 img_size=img_size, positional_embedding=positional_embedding,
+                 num_classes=num_classes,
+                 *args, **kwargs)
+
+@register_model
+def cct_7_3x1_32_c100_hybrid_fl(pretrained=False, progress=False,
+                      img_size=224, positional_embedding='learnable', num_classes=102,
+                      *args, **kwargs):
+    return cct_7_hybrid('cct_7_3x1_32_c100', pretrained, progress,
+                 kernel_size=3, n_conv_layers=1,
+                 img_size=img_size, positional_embedding=positional_embedding,
+                 num_classes=num_classes,
+                 embedding_dim=64,
+                 *args, **kwargs)
+
+
+# Other:
+
+@register_model
+def cct_2_3x2_32_c100(pretrained=False, progress=False,
+                 img_size=32, positional_embedding='learnable', num_classes=100,
+                 *args, **kwargs):
+    return cct_2('cct_2_3x2_32_hybrid', pretrained, progress,
+                 kernel_size=3, n_conv_layers=2,
+                 img_size=img_size, positional_embedding=positional_embedding,
+                 num_classes=num_classes,
+                 *args, **kwargs)
+
+@register_model
+def cct_2_3x2_32_c100_hybrid(pretrained=False, progress=False,
+                 img_size=32, positional_embedding='learnable', num_classes=100,
+                 *args, **kwargs):
+    return cct_2_hybrid('cct_2_3x2_32_hybrid', pretrained, progress,
+                 kernel_size=3, n_conv_layers=2,
+                 img_size=img_size, positional_embedding=positional_embedding,
+                 num_classes=num_classes,
+                 *args, **kwargs)
+
+@register_model
+def cct_4_3x2_32_c100_hybrid(pretrained=False, progress=False,
+                 img_size=32, positional_embedding='learnable', num_classes=100,
+                 *args, **kwargs):
+    return cct_4_hybrid('cct_4_3x2_32', pretrained, progress,
+                 kernel_size=3, n_conv_layers=2,
+                 img_size=img_size, positional_embedding=positional_embedding,
+                 num_classes=num_classes,
+                 *args, **kwargs)
+
+
+
+
+
+
+
+
+
+
+# Original Models:
 
 
 @register_model
@@ -356,26 +519,6 @@ def cct_7_3x1_32_sine(pretrained=False, progress=False,
                  *args, **kwargs)
 
 
-@register_model
-def cct_7_3x1_32_c100(pretrained=False, progress=False,
-                      img_size=32, positional_embedding='learnable', num_classes=100,
-                      *args, **kwargs):
-    return cct_7('cct_7_3x1_32_c100', pretrained, progress,
-                 kernel_size=3, n_conv_layers=1,
-                 img_size=img_size, positional_embedding=positional_embedding,
-                 num_classes=num_classes,
-                 *args, **kwargs)
-
-@register_model
-def cct_7_3x1_32_c100_fair(pretrained=False, progress=False,
-                      img_size=32, positional_embedding='learnable', num_classes=100,
-                      *args, **kwargs):
-    return cct_7_fair('cct_7_3x1_32_c100', pretrained, progress,
-                 kernel_size=3, n_conv_layers=1,
-                 img_size=img_size, positional_embedding=positional_embedding,
-                 num_classes=num_classes,
-                 *args, **kwargs)
-
 
 @register_model
 def cct_7_3x1_32_sine_c100(pretrained=False, progress=False,
@@ -432,6 +575,8 @@ def cct_7_7x2_224_sine(pretrained=False, progress=False,
                  *args, **kwargs)
 
 
+
+
 @register_model
 def cct_14_7x2_224(pretrained=False, progress=False,
                    img_size=224, positional_embedding='learnable', num_classes=1000,
@@ -452,54 +597,3 @@ def cct_14_7x2_384(pretrained=False, progress=False,
                   img_size=img_size, positional_embedding=positional_embedding,
                   num_classes=num_classes,
                   *args, **kwargs)
-
-
-@register_model
-def cct_14_7x2_384_fl(pretrained=False, progress=False,
-                      img_size=384, positional_embedding='learnable', num_classes=102,
-                      *args, **kwargs):
-    return cct_14('cct_14_7x2_384_fl', pretrained, progress,
-                  kernel_size=7, n_conv_layers=2,
-                  img_size=img_size, positional_embedding=positional_embedding,
-                  num_classes=num_classes,
-                  *args, **kwargs)
-
-@register_model
-def cct_7_3x1_32_c100_hybrid(pretrained=False, progress=False,
-                      img_size=32, positional_embedding='learnable', num_classes=100,
-                      *args, **kwargs):
-    return cct_7_hybrid('cct_7_3x1_32_c100', pretrained, progress,
-                 kernel_size=3, n_conv_layers=1,
-                 img_size=img_size, positional_embedding=positional_embedding,
-                 num_classes=num_classes,
-                 *args, **kwargs)
-
-@register_model
-def cct_2_3x2_32_c100(pretrained=False, progress=False,
-                 img_size=32, positional_embedding='learnable', num_classes=100,
-                 *args, **kwargs):
-    return cct_2('cct_2_3x2_32_hybrid', pretrained, progress,
-                 kernel_size=3, n_conv_layers=2,
-                 img_size=img_size, positional_embedding=positional_embedding,
-                 num_classes=num_classes,
-                 *args, **kwargs)
-
-@register_model
-def cct_2_3x2_32_c100_hybrid(pretrained=False, progress=False,
-                 img_size=32, positional_embedding='learnable', num_classes=100,
-                 *args, **kwargs):
-    return cct_2_hybrid('cct_2_3x2_32_hybrid', pretrained, progress,
-                 kernel_size=3, n_conv_layers=2,
-                 img_size=img_size, positional_embedding=positional_embedding,
-                 num_classes=num_classes,
-                 *args, **kwargs)
-
-@register_model
-def cct_4_3x2_32_c100_hybrid(pretrained=False, progress=False,
-                 img_size=32, positional_embedding='learnable', num_classes=100,
-                 *args, **kwargs):
-    return cct_4_hybrid('cct_4_3x2_32', pretrained, progress,
-                 kernel_size=3, n_conv_layers=2,
-                 img_size=img_size, positional_embedding=positional_embedding,
-                 num_classes=num_classes,
-                 *args, **kwargs)

@@ -52,7 +52,10 @@ class Tokenizer(nn.Module):
         return self.forward(torch.zeros((1, n_channels, height, width))).shape[1]
 
     def forward(self, x):
-        return self.flattener(self.conv_layers(x)).transpose(-2, -1)
+        x = self.conv_layers(x)
+        x = self.flattener(x)
+        x = x.transpose(-2, -1)
+        return x
 
     @staticmethod
     def init_weight(m):
@@ -108,7 +111,10 @@ class Res2NetTokenizer(nn.Module):
     def sequence_length(self, n_channels=3, height=224, width=224):
         return self.forward(torch.zeros((1, n_channels, height, width))).shape[1]
     def forward(self, x):
-        return self.flattener(self.conv_layers(x)).transpose(-2, -1)
+        x = self.conv_layers(x)
+        x = self.flattener(x)
+        x = x.transpose(-2, -1)
+        return x
     @staticmethod
     def init_weight(m):
         if isinstance(m, nn.Conv2d):
